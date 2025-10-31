@@ -1,0 +1,112 @@
+
+
+plugins {
+    id 'java'
+    id 'war'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1' // для fat jar
+}
+
+application {
+    mainClass = 'org.itmo.Main' // укажи свой entry point (класс с main)
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass
+        )
+    }
+}
+
+
+group 'ru.itmo.studs'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    springVersion = '6.2.10'
+    springSecurityVersion = '6.5.3'
+    thymeleafVersion = '3.1.2.RELEASE'
+    eclipselinkVersion = '4.0.3'
+    jakartaPersistenceVersion = '3.1.0'
+    postgresqlVersion = '42.7.3'
+    jakartaServletVersion = '6.0.0'
+    jacksonVersion = '2.16.1'
+}
+
+dependencies {
+    // Spring Core & MVC
+    implementation "org.springframework:spring-webmvc:${springVersion}"
+    implementation "org.springframework:spring-orm:${springVersion}"
+
+    // Для работы с датами и временем (ZonedDateTime)
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.3.1' // Это уже должно включать Jackson
+
+// Spring Security для аутентификации и авторизации
+    implementation "org.springframework.security:spring-security-web:${springSecurityVersion}"
+    implementation "org.springframework.security:spring-security-config:${springSecurityVersion}"
+    implementation "org.springframework.security:spring-security-taglibs:${springSecurityVersion}"
+
+// Thymeleaf для UI
+    implementation "org.thymeleaf:thymeleaf-spring6:${thymeleafVersion}"
+    implementation "org.thymeleaf.extras:thymeleaf-extras-springsecurity6:${thymeleafVersion}"
+
+// JPA (EclipseLink) для работы с БД
+    implementation "org.eclipse.persistence:eclipselink:${eclipselinkVersion}"
+    implementation "jakarta.persistence:jakarta.persistence-api:${jakartaPersistenceVersion}"
+
+// Драйвер PostgreSQL
+    implementation "org.postgresql:postgresql:${postgresqlVersion}"
+
+// Для валидации
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0-M1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.0-M1'
+
+    implementation 'org.springframework.data:spring-data-jpa:3.3.1'
+
+    compileOnly 'org.projectlombok:lombok:1.18.32'
+    annotationProcessor 'org.projectlombok:lombok:1.18.32'
+
+// MapStruct для маппинга DTO <-> Entity
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+    implementation 'org.eclipse.jetty:jetty-server:11.0.24'
+    implementation 'org.eclipse.jetty:jetty-servlet:11.0.24'
+    implementation 'org.eclipse.jetty:jetty-webapp:11.0.24'
+
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-simple:2.0.9'
+
+    // Jackson для JSON-маппинга
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.17.1'
+
+    //implementation 'org.springdoc:springdoc-openapi-ui:1.8.0'
+    implementation 'org.thymeleaf:thymeleaf-spring6:3.1.2.RELEASE'
+    //implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+    // WebSocket и STOMP для Real-Time обновлений
+    implementation "org.springframework:spring-websocket:${springVersion}"
+    implementation "org.springframework:spring-messaging:${springVersion}"
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+war {
+    archiveFileName = 'route-manager.war'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs = ['-parameters']
+}

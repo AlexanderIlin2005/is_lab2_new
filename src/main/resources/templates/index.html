@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>MusicBand Information System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        button { background-color: #007BFF; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-size: 14px; }
+        button:hover { background-color: #0056b3; }
+        .controls, .pagination, .special-operations { display: flex; justify-content: space-between; align-items: center; padding: 10px; flex-wrap: wrap; gap: 10px; }
+        .form-group { display: flex; gap: 10px; align-items: center; }
+        input, select, textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
+        .modal-content form { display: flex; flex-direction: column; gap: 10px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+
+        /* Новые стили */
+        .main-nav { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .main-nav ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 20px; }
+        .main-nav a { text-decoration: none; color: #333; padding: 8px 16px; border-radius: 4px; transition: background-color 0.3s; }
+        .main-nav a.active, .main-nav a:hover { background-color: #007BFF; color: white; }
+
+        .operation-group { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .operation-form { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+
+        .btn-danger { background-color: #dc3545; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-warning:hover { background-color: #e0a800; }
+        .btn-info { background-color: #17a2b8; }
+        .btn-info:hover { background-color: #138496; }
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+
+
+        .results-container { margin-top: 15px; padding: 15px; border-radius: 5px; text-align: left; }
+        .success-message { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; border: 1px solid #c3e6cb; }
+        .error-message { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; }
+        .info-message { background-color: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 4px; border: 1px solid #bee5eb; }
+
+        .field-error { color: #dc3545; font-size: 0.8em; margin-top: 5px; }
+        input.error { border-color: #dc3545; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .studio-select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .studio-option { padding: 8px; }
+
+        .text-danger {
+    color: #dc3545; /* стандартный "danger" красный из Bootstrap */
+    text-decoration: none; /* убираем подчёркивание */
+    cursor: pointer;
+}
+
+.text-danger:hover {
+    color: #a71d2a; /* чуть темнее при наведении */
+    text-decoration: underline; /* можно вернуть подчёркивание при hover */
+}
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="#bands-section" class="nav-link active">Music Bands</a></li>
+            <li><a href="#studios-section" class="nav-link">Studios</a></li>
+            <li><a href="#albums-section" class="nav-link">Albums</a></li> <li>
+            <li><a href="#operations-section" class="nav-link">Special Operations</a></li>
+        </ul>
+    </nav>
+
+    <h1>MusicBand Information System</h1>
+
+
+    <div id="bands-section" class="section active">
+        <div class="controls">
+            <div class="form-group">
+                <input type="text" id="filterName" placeholder="Filter by exact name...">
+                <select id="sortField">
+                    <option value="id">Sort by ID</option>
+                    <option value="name">Sort by Name</option>
+                    <option value="establishmentDate">Sort by Establishment Date</option>
+                </select>
+                <select id="sortOrder">
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                </select>
+                <button onclick="applyFiltersAndSort()">Apply</button>
+            </div>
+            <button onclick="openCreateModal()">Create New Band</button>
+        </div>
+
+        <table id="bandsTable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Genre</th>
+                <th>Participants</th>
+                <th>Albums</th>
+                <th>Studio</th>
+                <th>Establishment</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="pagination">
+            <button id="prevPage" onclick="changePage(-1)">Previous</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextPage" onclick="changePage(1)">Next</button>
+        </div>
+    </div>
+
+
+    <div id="studios-section" class="section">
+        <h2>Studio Management</h2>
+
+        <div class="controls">
+            <div class="form-group">
+                <input type="text" id="studioFilter" placeholder="Filter studios...">
+                <button onclick="loadStudios()">Filter</button>
+            </div>
+            <button onclick="openCreateStudioModal()" class="btn-success">Create New Studio</button>
+        </div>
+
+        <table id="studiosTable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="pagination">
+            <button id="prevStudioPage" onclick="changeStudioPage(-1)">Previous</button>
+            <span id="studioPageInfo">Page 1 of 1</span>
+            <button id="nextStudioPage" onclick="changeStudioPage(1)">Next</button>
+        </div>
+    </div>
+
+
+    <div id="albums-section" class="section">
+        <h2>Albums Management</h2>
+        <div class="controls">
+            <div class="form-group">
+            </div>
+            <button onclick="openCreateAlbumModal()" class="btn-success">Create New Album</button>
+        </div>
+
+        <table id="albumsTable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Tracks</th>
+                <th>Length (min)</th>
+                <th>Sales (M)</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <button id="prevAlbumPage" onclick="changeAlbumPage(-1)">Previous</button>
+            <span id="albumPageInfo">Page 1 of 1</span>
+            <button id="nextAlbumPage" onclick="changeAlbumPage(1)">Next</button>
+        </div>
+    </div>
+
+
+    <div id="operations-section" class="section">
+        <h2>Special Operations</h2>
+        <div id="results" class="results-container">Operation results will be shown here.</div>
+
+        <div class="special-operations">
+            <div class="operation-group">
+                <h4>Delete Operations</h4>
+                <form onsubmit="handleDeleteByStudio(event)" class="operation-form">
+                    <select id="studioNameToDelete" required>
+                        <option value="">Select Studio to Delete From</option>
+                    </select>
+                    <button type="submit" class="btn-danger">Delete One by Studio</button>
+                </form>
+            </div>
+
+            <div class="operation-group">
+                <h4>Statistics</h4>
+                <button onclick="handleAverageAlbums()" class="btn-info">Get Average Album Count</button>
+                <form onsubmit="handleCountStudio(event)" class="operation-form">
+                    <select id="studioNameToCount" required>
+                        <option value="">Select Studio to Compare</option>
+                    </select>
+                    <button type="submit" class="btn-info">Count Bands (Studio > Name)</button>
+                </form>
+            </div>
+
+            <div class="operation-group">
+                <h4>Search & Modify</h4>
+                <form onsubmit="handleFindByGenre(event)" class="operation-form">
+                    <select id="genreToFind" required>
+                        <option value="">Select Genre</option>
+                        <option value="ROCK">ROCK</option>
+                        <option value="PSYCHEDELIC_CLOUD_RAP">PSYCHEDELIC_CLOUD_RAP</option>
+                        <option value="POP">POP</option>
+                        <option value="PUNK_ROCK">PUNK_ROCK</option>
+                        <option value="BRIT_POP">BRIT_POP</option>
+                    </select>
+                    <button type="submit" class="btn-info">Find by Genre</button>
+                </form>
+                <form onsubmit="handleRemoveParticipant(event)" class="operation-form">
+                    <input type="number" id="bandIdToRemoveFrom" placeholder="Band ID" min="1" required>
+                    <button type="submit" class="btn-warning">Remove Participant</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <div id="bandModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Create New Band</h2>
+            <form id="bandForm" onsubmit="handleFormSubmit(event)">
+                <input type="hidden" id="bandId">
+                <label>Name: <input type="text" id="name" required></label>
+                <label>Genre:
+                    <select id="genre" required>
+                        <option value="ROCK">ROCK</option>
+                        <option value="PSYCHEDELIC_CLOUD_RAP">PSYCHEDELIC_CLOUD_RAP</option>
+                        <option value="POP">POP</option>
+                        <option value="PUNK_ROCK">PUNK_ROCK</option>
+                        <option value="BRIT_POP">BRIT_POP</option>
+                    </select>
+                </label>
+                <label>Participants: <input type="number" id="numberOfParticipants" min="1" required></label>
+                <label>Singles Count: <input type="number" id="singleCount" min="1"></label>
+                <label>Description: <textarea id="description"></textarea></label>
+                <label>Album Count: <input type="number" id="albumCount" min="1" required></label>
+                <label>Establishment Date: <input type="datetime-local" id="establishmentDate" required></label>-->
+                <hr>
+                <h4>Coordinates</h4>
+                <label>X: <input type="number" step="any" id="coordinatesX" max="931" required></label>
+                <label>Y: <input type="number" id="coordinatesY" required></label>
+                <hr>
+                <h4>Associated Entities</h4>
+
+                <label>Best Album:
+                    <select id="bestAlbumId">
+                        <option value="">No Best Album</option>
+                    </select>
+                </label>
+                <label>Studio:
+                    <select id="studioId">
+                        <option value="">No Studio</option>
+                    </select>
+                </label>
+
+                <button type="submit" id="submitButton">Create</button>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="studioModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeStudioModal()">&times;</span>
+            <h2 id="studioModalTitle">Create New Studio</h2>
+            <form id="studioForm" onsubmit="handleStudioFormSubmit(event)">
+                <input type="hidden" id="studioModalId">
+                <label>Studio Name: <input type="text" id="studioName" required></label>
+                <button type="submit" id="studioSubmitButton">Create</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="bandDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="document.getElementById('bandDetailsModal').style.display='none'">&times;</span>
+            <h2 id="bandDetailsModalTitle">Band Details</h2>
+            <div id="bandDetailsModalBody" style="text-align: left;">
+            </div>
+            <button onclick="document.getElementById('bandDetailsModal').style.display='none'" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <div id="albumModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAlbumModal()">&times;</span>
+            <h2 id="albumModalTitle">Create New Album</h2>
+            <form id="albumForm" onsubmit="handleAlbumFormSubmit(event)">
+                <input type="hidden" id="albumModalId">
+                <label>Album Name: <input type="text" id="albumName" required></label>
+                <label>Tracks: <input type="number" id="albumTracks" min="1" required></label>
+                <label>Length (in minutes): <input type="number" id="albumLength" min="1" required></label>
+                <label>Sales (Millions): <input type="number" id="albumSales" step="0.01" min="0"></label>
+                <button type="submit" id="albumSubmitButton">Create</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+    <script>
+        let currentPage = 0;
+        let totalPages = 1;
+        let currentStudioPage = 0;
+        let totalStudioPages = 1;
+
+        let currentAlbumPage = 0;
+        let totalAlbumPages = 1;
+
+        let currentSortField = 'id';
+        let currentSortOrder = 'asc';
+        let currentFilterName = '';
+        let studios = [];
+        let stompClient = null;
+
+        const API_URL = '/api/music-bands';
+        const STUDIO_API_URL = '/api/studios';
+        const resultsDiv = document.getElementById('results');
+
+        const ALBUM_API_URL = '/api/albums';
+        let albums = [];
+
+        function connectToWebSocket() {
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, (frame) => {
+            console.log('Connected to WebSocket: ' + frame);
+
+
+            stompClient.subscribe('/topic/bands/updates', (message) => {
+                console.log("Received update notification: ", message.body);
+
+
+                loadBands();
+                loadStudioSelects();
+
+                showInfo("Данные обновлены на другой вкладке/клиенте.");
+            });
+
+        }, (error) => {
+            console.error('WebSocket connection error. Retrying in 5 seconds...', error);
+
+            setTimeout(connectToWebSocket, 5000);
+        });
+    }
+
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            document.getElementById(sectionId).classList.add('active');
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
+
+
+            if (sectionId === 'studios-section') {
+                loadStudios();
+            }
+
+            if (sectionId === 'operations-section') {
+                loadStudioSelects();
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBands();
+            loadStudios();
+            loadAlbums();
+            loadStudioSelects();
+
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = link.getAttribute('href').substring(1);
+                    showSection(sectionId);
+                });
+            });
+            connectToWebSocket();
+        });
+
+
+        function showError(message) {
+            resultsDiv.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showSuccess(message) {
+            resultsDiv.innerHTML = `<div class="success-message">✅ ${message}</div>`;
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showInfo(message) {
+            resultsDiv.innerHTML = `<div class="info-message">ℹ️ ${message}</div>`;
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+
+        function loadStudioSelects() {
+            fetch(STUDIO_API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    studios = data;
+                    updateStudioSelects();
+                })
+                .catch(error => console.error('Error loading studios:', error));
+        }
+
+        function updateStudioSelects() {
+        const studioSelects = [
+            document.getElementById('studioId'),
+            document.getElementById('studioNameToDelete'),
+            document.getElementById('studioNameToCount')
+        ];
+
+        studioSelects.forEach(select => {
+            if (select) {
+
+                const currentValue = select.value;
+
+
+                const initialLength = select.id === 'studioId' ? 1 : 0;
+
+
+                while (select.options.length > initialLength) {
+                    select.remove(select.options.length - 1);
+                }
+
+
+                if (select.id === 'studioId' && select.options.length === 0) {
+                     const noneOption = document.createElement('option');
+                     noneOption.value = "";
+                     noneOption.textContent = "No Studio";
+                     select.appendChild(noneOption);
+                }
+
+
+                studios.forEach(studio => {
+                    const option = document.createElement('option');
+
+                    if (select.id === 'studioId') {
+
+                        option.value = studio.id;
+                        option.textContent = studio.name;
+                    } else {
+
+                        option.value = studio.name;
+                        option.textContent = `${studio.name} (ID: ${studio.id})`;
+                    }
+
+                    select.appendChild(option);
+                });
+
+                if (currentValue && Array.from(select.options).some(opt => opt.value == currentValue)) {
+                    select.value = currentValue;
+                }
+            }
+        });
+    }
+
+
+        function buildApiUrl() {
+            return `${API_URL}?page=${currentPage}&size=10&sort=${currentSortField}&order=${currentSortOrder}&nameEquals=${encodeURIComponent(currentFilterName)}`;
+        }
+    function loadBands() {
+        fetch(buildApiUrl())
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.querySelector('#bandsTable tbody');
+                tableBody.innerHTML = '';
+
+                const bands = data.content || [];
+
+                bands.forEach(band => {
+
+
+                    const establishmentTimestamp = band.establishmentDate;
+
+
+                    const dateToDisplay = (typeof establishmentTimestamp === 'number')
+                        ? new Date(establishmentTimestamp * 1000).toLocaleDateString('ru-RU', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        })
+                        : 'N/A';
+
+
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${band.id}</td>
+                        <td>
+                            <span style="cursor: pointer; color: #007BFF; text-decoration: underline;"
+                                  onclick="showBandDetails(${band.id})">${band.name}</span>
+                        </td>
+                        <td>${band.genre}</td>
+                        <td>${band.numberOfParticipants}</td>
+                        <td>${band.albumCount}</td>
+
+                        <td>${band.studio ? band.studio.name : 'No Studio'}</td>
+
+                        <td>${dateToDisplay}</td>
+
+                        <td>
+                            <a href="#" onclick="openEditModal(${band.id})">Edit</a>
+                            |
+                            <a href="#" onclick="deleteBand(${band.id})" class="text-danger">Delete</a>
+                        </td>
+                    `;
+                });
+                currentPage = data.number;
+                totalPages = data.totalPages;
+                document.getElementById('pageInfo').textContent = `Page ${currentPage + 1} of ${totalPages}`;
+                document.getElementById('prevPage').disabled = data.first;
+                document.getElementById('nextPage').disabled = data.last;
+            })
+            .catch(error => {
+                console.error('Error loading bands:', error);
+                document.querySelector('#bandsTable tbody').innerHTML = `<tr><td colspan="8" style="color: red;">Ошибка загрузки данных: ${error.message}</td></tr>`;
+            });
+    }
+
+
+        function loadStudios() {
+            const filter = document.getElementById('studioFilter')?.value || '';
+            let url = STUDIO_API_URL;
+            if (filter) {
+                url += `?name=${encodeURIComponent(filter)}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.querySelector('#studiosTable tbody');
+                    tableBody.innerHTML = '';
+
+
+                    if (Array.isArray(data)) {
+                        data.forEach(studio => {
+                            const row = tableBody.insertRow();
+                            row.innerHTML = `
+                                <td>${studio.id}</td>
+                                <td>${studio.name}</td>
+                                <td>
+                                    <a href="#" onclick="openEditStudioModal(${studio.id})">Edit</a>
+                                    |
+                                    <a href="#" onclick="deleteStudio(${studio.id})" class="text-danger">Delete</a>
+                                </td>
+                            `;
+                        });
+                    }
+
+
+                    studios = Array.isArray(data) ? data : [];
+                    updateStudioSelects();
+                })
+                .catch(error => {
+                    console.error('Error loading studios:', error);
+                    showError('Error loading studios: ' + error.message);
+                });
+        }
+
+        function openCreateStudioModal() {
+            document.getElementById('studioForm').reset();
+            clearFormErrors();
+            document.getElementById('studioModalId').value = '';
+            document.getElementById('studioModalTitle').textContent = 'Create New Studio';
+            document.getElementById('studioSubmitButton').textContent = 'Create';
+            document.getElementById('studioModal').style.display = 'block';
+        }
+
+        function openEditStudioModal(id) {
+            fetch(`${STUDIO_API_URL}/${id}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Studio not found');
+                    return res.json();
+                })
+                .then(studio => {
+                    document.getElementById('studioModalId').value = studio.id;
+                    document.getElementById('studioName').value = studio.name;
+                    document.getElementById('studioModalTitle').textContent = 'Edit Studio';
+                    document.getElementById('studioSubmitButton').textContent = 'Update';
+                    document.getElementById('studioModal').style.display = 'block';
+                })
+                .catch(error => showError('Error loading studio: ' + error.message));
+        }
+
+        function closeStudioModal() {
+            document.getElementById('studioModal').style.display = 'none';
+            clearFormErrors();
+        }
+
+        function handleStudioFormSubmit(event) {
+            event.preventDefault();
+
+            const studioId = document.getElementById('studioModalId').value;
+            const method = studioId ? 'PATCH' : 'POST';
+            const url = studioId ? `${STUDIO_API_URL}/${studioId}` : STUDIO_API_URL;
+
+            const formData = {
+                name: document.getElementById('studioName').value
+            };
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Submission failed!');
+                }
+                return response.json();
+            })
+            .then(() => {
+                showSuccess(`Studio ${studioId ? 'updated' : 'created'} successfully!`);
+                closeStudioModal();
+                loadStudios();
+                loadStudioSelects();
+            })
+            .catch(error => showError('Error: ' + error.message));
+        }
+
+        function deleteStudio(id) {
+            if (confirm(`Are you sure you want to delete studio with ID ${id}? This may affect bands associated with this studio.`)) {
+                fetch(`${STUDIO_API_URL}/${id}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            showSuccess('Studio deleted successfully!');
+                            loadStudios();
+                            loadStudioSelects();
+                        } else {
+                            throw new Error('Failed to delete studio.');
+                        }
+                    })
+                    .catch(error => showError(error.message));
+            }
+        }
+
+
+        function applyFiltersAndSort() {
+            currentFilterName = document.getElementById('filterName').value;
+            currentSortField = document.getElementById('sortField').value;
+            currentSortOrder = document.getElementById('sortOrder').value;
+            currentPage = 0;
+            loadBands();
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            loadBands();
+        }
+
+        function changeStudioPage(direction) {
+            currentStudioPage += direction;
+            loadStudios();
+        }
+
+        function changeAlbumPage(direction) {
+            currentAlbumPage += direction;
+            loadAlbums();
+        }
+
+        function deleteBand(id) {
+            if (confirm(`Are you sure you want to delete band with ID ${id}?`)) {
+                fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            showSuccess('Band deleted successfully!');
+                            loadBands();
+                        } else {
+                            throw new Error('Failed to delete band.');
+                        }
+                    })
+                    .catch(error => showError(error.message));
+            }
+        }
+
+
+        const modal = document.getElementById('bandModal');
+        const studioModal = document.getElementById('studioModal');
+
+        function openCreateModal() {
+        document.getElementById('bandForm').reset();
+        clearFormErrors();
+        document.getElementById('bandId').value = '';
+        document.getElementById('modalTitle').textContent = 'Create New Band';
+        document.getElementById('submitButton').textContent = 'Create';
+
+
+        const studioSelect = document.getElementById('studioId');
+        if (studioSelect) {
+            studioSelect.value = '';
+        }
+
+        modal.style.display = 'block';
+    }
+
+        function openEditModal(id) {
+        fetch(`${API_URL}/${id}`)
+            .then(res => res.json())
+            .then(band => {
+                document.getElementById('bandId').value = band.id;
+                document.getElementById('name').value = band.name;
+                document.getElementById('genre').value = band.genre;
+                document.getElementById('numberOfParticipants').value = band.numberOfParticipants;
+                document.getElementById('singleCount').value = band.singleCount;
+                document.getElementById('description').value = band.description;
+                document.getElementById('albumCount').value = band.albumCount;
+
+
+                const dt = new Date(band.establishmentDate);
+                document.getElementById('establishmentDate').value = new Date(dt.getTime() - (dt.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+                document.getElementById('coordinatesX').value = band.coordinates.x;
+                document.getElementById('coordinatesY').value = band.coordinates.y;
+                document.getElementById('bestAlbumId').value = band.bestAlbum ? band.bestAlbum.id : '';
+
+
+
+                const studioId = band.studio ? band.studio.id : '';
+                document.getElementById('studioId').value = studioId;
+
+                document.getElementById('modalTitle').textContent = 'Edit Music Band';
+                document.getElementById('submitButton').textContent = 'Update';
+                modal.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error loading band:', error);
+                showError('Error loading band: ' + error.message);
+            });
+    }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            clearFormErrors();
+        }
+
+        function clearFormErrors() {
+            document.querySelectorAll('.field-error').forEach(el => el.remove());
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.classList.remove('error');
+            });
+        }
+
+        function showFieldError(fieldName, message) {
+            const field = document.getElementById(fieldName);
+            field.classList.add('error');
+
+            let errorElement = document.getElementById(`${fieldName}-error`);
+            if (!errorElement) {
+                errorElement = document.createElement('div');
+                errorElement.id = `${fieldName}-error`;
+                errorElement.className = 'field-error';
+                field.parentNode.appendChild(errorElement);
+            }
+            errorElement.textContent = message;
+        }
+
+        function validateForm() {
+            let isValid = true;
+            const requiredFields = ['name', 'numberOfParticipants', 'albumCount', 'establishmentDate', 'coordinatesX', 'coordinatesY'];
+
+            requiredFields.forEach(field => {
+                const element = document.getElementById(field);
+                if (!element.value.trim()) {
+                    showFieldError(field, 'This field is required');
+                    isValid = false;
+                }
+            });
+
+            return isValid;
+        }
+
+        function handleFormSubmit(event) {
+        event.preventDefault();
+
+        clearFormErrors();
+
+        if (!validateForm()) {
+            showError('Please fill all required fields correctly.');
+            return;
+        }
+
+        const bandId = document.getElementById('bandId').value;
+        const method = bandId ? 'PATCH' : 'POST';
+        const url = bandId ? `${API_URL}/${bandId}` : API_URL;
+
+
+        const establishmentDate = new Date(document.getElementById('establishmentDate').value).toISOString();
+
+        const studioId = document.getElementById('studioId').value;
+
+
+        let studioPayload = null;
+        if (studioId !== "") {
+
+            studioPayload = { id: parseInt(studioId) };
+        } else {
+
+            studioPayload = { id: null };
+        }
+
+
+        const formData = {
+            name: document.getElementById('name').value,
+            genre: document.getElementById('genre').value,
+            numberOfParticipants: parseInt(document.getElementById('numberOfParticipants').value),
+            singleCount: document.getElementById('singleCount').value ? parseInt(document.getElementById('singleCount').value) : null,
+            description: document.getElementById('description').value || null,
+            albumCount: parseInt(document.getElementById('albumCount').value),
+            establishmentDate: establishmentDate,
+            coordinates: {
+                x: parseFloat(document.getElementById('coordinatesX').value),
+                y: parseInt(document.getElementById('coordinatesY').value)
+            },
+            bestAlbum: document.getElementById('bestAlbumId').value ? { id: parseInt(document.getElementById('bestAlbumId').value) } : null,
+
+
+            studio: studioPayload,
+        };
+
+        console.log('Sending form data:', JSON.stringify(formData, null, 2));
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.log('Error response:', text);
+                    throw new Error(text || 'Submission failed!');
+                });
+            }
+            return response.json();
+        })
+        .then((data) => {
+            console.log('Success response:', data);
+            showSuccess(`Band ${bandId ? 'updated' : 'created'} successfully!`);
+            closeModal();
+            loadBands();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            try {
+                const errorData = JSON.parse(error.message);
+                if (errorData.errors) {
+                    errorData.errors.forEach(err => {
+                        showFieldError(err.field, err.defaultMessage);
+                    });
+                    showError('Please correct the validation errors above.');
+                } else {
+                    showError('Error: ' + error.message);
+                }
+            } catch (e) {
+                showError('Error: ' + error.message);
+            }
+        });
+    }
+
+
+        function handleDeleteByStudio(event) {
+            event.preventDefault();
+            const studioName = document.getElementById('studioNameToDelete').value;
+
+            if (!studioName) {
+                showError('Please select a studio.');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete a band with studio "${studioName}"?`)) {
+                return;
+            }
+
+            fetch(`${API_URL}/by-studio?studioName=${encodeURIComponent(studioName)}`, { method: 'DELETE' })
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.deleted > 0) {
+                        showSuccess(`Deleted ${data.deleted} band(s) with studio '${studioName}'.`);
+                        loadBands();
+                    } else {
+                        showInfo(`No bands found with studio '${studioName}'.`);
+                    }
+                    document.getElementById('studioNameToDelete').value = '';
+                })
+                .catch(err => showError('Error: ' + err.message));
+        }
+
+        function handleAverageAlbums() {
+            fetch(`${API_URL}/average-album-count`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    showInfo(`Average album count across all bands: ${data.average.toFixed(2)}`);
+                })
+                .catch(err => showError('Error: ' + err.message));
+        }
+
+        function handleCountStudio(event) {
+            event.preventDefault();
+            const studioName = document.getElementById('studioNameToCount').value;
+
+            if (!studioName) {
+                showError('Please select a studio.');
+                return;
+            }
+
+            fetch(`${API_URL}/count-by-studio?studioName=${encodeURIComponent(studioName)}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    showInfo(`Found ${data.count} band(s) where studio name is greater than '${studioName}'.`);
+                    document.getElementById('studioNameToCount').value = '';
+                })
+                .catch(err => showError('Error: ' + err.message));
+        }
+
+        function handleFindByGenre(event) {
+            event.preventDefault();
+            const genre = document.getElementById('genreToFind').value;
+            fetch(`${API_URL}/by-genre/${genre}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    const bandNames = data.map(b => b.name).join(', ');
+                    showInfo(`Bands in ${genre} genre: ${bandNames || 'None found'}.`);
+                })
+                .catch(err => showError('Error: ' + err.message));
+        }
+
+        function handleRemoveParticipant(event) {
+            event.preventDefault();
+            const bandId = document.getElementById('bandIdToRemoveFrom').value;
+
+            if (!confirm(`Remove one participant from band ${bandId}?`)) {
+                return;
+            }
+
+            fetch(`${API_URL}/${bandId}/remove-participant`, { method: 'PATCH' })
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    showSuccess(`Band ${bandId} now has ${data.numberOfParticipants} participants.`);
+                    loadBands();
+                    document.getElementById('bandIdToRemoveFrom').value = '';
+                })
+                .catch(err => showError('Error: Could not find or update band with ID ' + bandId));
+        }
+
+        function showBandDetails(id) {
+        fetch(`${API_URL}/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error('Band not found or network error');
+                return res.json();
+            })
+            .then(band => {
+
+                const creationDate = new Date(band.creationDate).toLocaleString();
+                const establishmentDate = new Date(band.establishmentDate * 1000).toLocaleDateString();
+
+
+                const coords = `(X: ${band.coordinates.x}, Y: ${band.coordinates.y})`;
+
+
+                const bestAlbumInfo = band.bestAlbum ?
+                    `Album ID: ${band.bestAlbum.id}, Name: ${band.bestAlbum.name}, Tracks: ${band.bestAlbum.tracks}, Length: ${band.bestAlbum.length}` :
+                    'No Best Album';
+
+
+                const detailsHtml = `
+                    <h3>Details for ${band.name} (ID: ${band.id})</h3>
+                    <p><strong>Genre:</strong> ${band.genre}</p>
+                    <p><strong>Participants:</strong> ${band.numberOfParticipants}</p>
+                    <p><strong>Singles Count:</strong> ${band.singleCount || 'N/A'}</p>
+                    <p><strong>Album Count:</strong> ${band.albumCount}</p>
+                    <p><strong>Studio:</strong> ${band.studio ? band.studio.name : 'None'}</p>
+                    <p><strong>Established:</strong> ${establishmentDate}</p>
+                    <p><strong>Created in System:</strong> ${creationDate}</p>
+                    <p><strong>Coordinates:</strong> ${coords}</p>
+                    <p><strong>Best Album:</strong> ${bestAlbumInfo}</p>
+                    <p><strong>Description:</strong> ${band.description || 'No description provided'}</p>
+                `;
+
+
+                showModal(detailsHtml, `Band Details: ${band.name}`);
+
+            })
+            .catch(error => showError('Error loading band details: ' + error.message));
+    }
+
+
+    function showModal(content, title = 'Information') {
+
+        const modal = document.getElementById('bandDetailsModal');
+        if (modal) {
+            document.getElementById('bandDetailsModalTitle').textContent = title;
+            document.getElementById('bandDetailsModalBody').innerHTML = content;
+            modal.style.display = 'block';
+        } else {
+
+            console.warn("Using alert fallback. Implement a proper 'bandDetailsModal' in HTML.");
+            alert(title + "\n\n" + content.replace(/<[^>]*>?/gm, ' ').replace(/&nbsp;/g, ' '));
+        }
+    }
+
+
+
+
+
+
+function loadAlbums() {
+
+    const url = `${ALBUM_API_URL}?page=${currentAlbumPage}&size=10`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.querySelector('#albumsTable tbody');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+
+
+            albums = Array.isArray(data.content) ? data.content : [];
+
+            albums.forEach(album => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${album.id}</td>
+                    <td>${album.name}</td>
+                    <td>${album.tracks}</td>
+                    <td>${album.length}</td>
+                    <td>${album.sales !== null ? album.sales.toFixed(2) : 'N/A'}</td>
+                    <td>
+                        <a href="#" onclick="openEditAlbumModal(${album.id})">Edit</a> |
+                        <a href="#" class="text-danger" onclick="deleteAlbum(${album.id})">Delete</a>
+                    </td>
+                `;
+            });
+            updateAlbumSelects();
+
+
+            currentAlbumPage = data.number;
+            totalAlbumPages = data.totalPages;
+            document.getElementById('albumPageInfo').textContent = `Page ${currentAlbumPage + 1} of ${totalAlbumPages}`;
+            document.getElementById('prevAlbumPage').disabled = data.first;
+            document.getElementById('nextAlbumPage').disabled = data.last;
+
+        })
+        .catch(error => {
+            console.error('Error loading albums:', error);
+            showError('Error loading albums: ' + error.message);
+        });
+}
+
+
+function openCreateAlbumModal() {
+    document.getElementById('albumForm').reset();
+    clearFormErrors();
+    document.getElementById('albumModalId').value = '';
+    document.getElementById('albumModalTitle').textContent = 'Create New Album';
+    document.getElementById('albumSubmitButton').textContent = 'Create';
+    document.getElementById('albumModal').style.display = 'block';
+}
+
+function closeAlbumModal() {
+    document.getElementById('albumModal').style.display = 'none';
+}
+
+function openEditAlbumModal(id) {
+    fetch(`${ALBUM_API_URL}/${id}`)
+        .then(res => res.json())
+        .then(album => {
+            document.getElementById('albumModalId').value = album.id;
+            document.getElementById('albumName').value = album.name;
+            document.getElementById('albumTracks').value = album.tracks;
+            document.getElementById('albumLength').value = album.length;
+            document.getElementById('albumSales').value = album.sales;
+
+            document.getElementById('albumModalTitle').textContent = 'Edit Album';
+            document.getElementById('albumSubmitButton').textContent = 'Update';
+            document.getElementById('albumModal').style.display = 'block';
+        })
+        .catch(error => showError('Error loading album: ' + error.message));
+}
+
+
+function handleAlbumFormSubmit(event) {
+    event.preventDefault();
+
+    const albumId = document.getElementById('albumModalId').value;
+    const method = albumId ? 'PATCH' : 'POST';
+    const url = albumId ? `${ALBUM_API_URL}/${albumId}` : ALBUM_API_URL;
+    const salesValue = document.getElementById('albumSales').value;
+
+    const formData = {
+        name: document.getElementById('albumName').value,
+        tracks: parseInt(document.getElementById('albumTracks').value),
+        length: parseInt(document.getElementById('albumLength').value),
+        sales: salesValue ? parseFloat(salesValue) : null
+    };
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => { throw new Error(text || 'Submission failed!'); });
+        }
+        return response.json();
+    })
+    .then(() => {
+        showSuccess(`Album ${albumId ? 'updated' : 'created'} successfully!`);
+        closeAlbumModal();
+        loadAlbums();
+    })
+    .catch(error => showError('Error submitting album form: ' + error.message));
+}
+
+
+function deleteAlbum(id) {
+    if (confirm(`Are you sure you want to delete album with ID ${id}? This may affect bands that use it as 'Best Album'.`)) {
+        fetch(`${ALBUM_API_URL}/${id}`, { method: 'DELETE' })
+            .then(response => {
+                if (response.ok) {
+                    showSuccess('Album deleted successfully!');
+                    loadAlbums();
+                } else {
+                    return response.text().then(text => { throw new Error(text || 'Failed to delete album.'); });
+                }
+            })
+            .catch(error => showError(error.message));
+    }
+}
+
+
+function updateAlbumSelects() {
+    const bestAlbumSelect = document.getElementById('bestAlbumId');
+    if (!bestAlbumSelect) return;
+
+    const currentValue = bestAlbumSelect.value;
+    bestAlbumSelect.innerHTML = '';
+
+    const noneOption = document.createElement('option');
+    noneOption.value = "";
+    noneOption.textContent = "No Best Album";
+    bestAlbumSelect.appendChild(noneOption);
+
+    albums.forEach(album => {
+        const option = document.createElement('option');
+        option.value = album.id;
+        option.textContent = `${album.name} (ID: ${album.id})`;
+        bestAlbumSelect.appendChild(option);
+    });
+
+    if (currentValue && Array.from(bestAlbumSelect.options).some(opt => opt.value == currentValue)) {
+        bestAlbumSelect.value = currentValue;
+    }
+}
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_1.xsd"
+             version="3.1">
+    <persistence-unit name="my-persistence-unit" transaction-type="RESOURCE_LOCAL">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        <!-- Добавьте ваши сущности здесь -->
+        <class>org.itmo.model.MusicBand</class>
+        <class>org.itmo.model.Coordinates</class>
+        <class>org.itmo.model.Album</class>
+        <class>org.itmo.model.Studio</class>
+        <class>org.itmo.model.MusicGenre</class>
+
+        <!-- Настройки подключения к базе данных -->
+        <properties>
+            <property name="jakarta.persistence.jdbc.password" value="UVos.8847"/>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/studs"/>
+            <property name="jakarta.persistence.jdbc.user" value="s381032"/>
+            <!-- Важно! Укажите, что мы используем EclipseLink -->
+            <property name="eclipselink.weaving" value="false"/>
+        </properties>
+    </persistence-unit>
+</persistence>
