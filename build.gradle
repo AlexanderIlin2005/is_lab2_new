@@ -21,7 +21,7 @@ jar {
 
 
 group 'ru.itmo.studs'
-version '1.0-SNAPSHOT'
+version '2.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -96,6 +96,10 @@ dependencies {
     // WebSocket и STOMP для Real-Time обновлений
     implementation "org.springframework:spring-websocket:${springVersion}"
     implementation "org.springframework:spring-messaging:${springVersion}"
+
+    // НОВЫЕ ЗАВИСИМОСТИ ДЛЯ WEBSOCKET И JAKARTA
+    implementation 'org.eclipse.jetty.websocket:websocket-jakarta-server:11.0.24'
+    implementation 'org.eclipse.jetty.websocket:websocket-jakarta-client:11.0.24'
 
 }
 

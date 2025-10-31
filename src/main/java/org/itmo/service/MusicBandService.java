@@ -16,6 +16,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import org.itmo.dto.MusicBandCreateDto; // Используем правильный DTO
+import java.io.InputStream;
+
+// НУЖНЫЕ ИМПОРТЫ ДЛЯ JAXB:
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.Unmarshaller;
+import jakarta.xml.bind.JAXBException;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -217,5 +225,37 @@ public class MusicBandService {
             return musicBand.getNumberOfParticipants();
         }
         return musicBand.getNumberOfParticipants();
+    }
+
+    @Transactional
+    public int importBandsFromXml(InputStream xmlData) {
+        try {
+            // Создаем контекст JAXB, используя MusicBandListWrapper и MusicBandCreateDto
+            JAXBContext jaxbContext = JAXBContext.newInstance(MusicBandListWrapper.class, MusicBandCreateDto.class);
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+
+            MusicBandListWrapper wrapper = (MusicBandListWrapper) unmarshaller.unmarshal(xmlData);
+
+            List<MusicBandCreateDto> dtos = wrapper.getMusicBands();
+
+            if (dtos == null || dtos.isEmpty()) {
+                return 0;
+            }
+
+            // Преобразуем MusicBandCreateDto в Entity с помощью существующего маппера
+            List<MusicBand> newBands = dtos.stream()
+                    .map(musicBandMapper::toEntity)
+                    .toList();
+
+            musicBandRepository.saveAll(newBands);
+
+            notifyClients("BAND_BULK_IMPORTED");
+
+            return newBands.size();
+        } catch (JAXBException e) {
+            throw new RuntimeException("Ошибка парсинга XML-файла. Проверьте формат и структуру: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Произошла ошибка при массовом импорте: " + e.getMessage(), e);
+        }
     }
 }

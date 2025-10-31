@@ -13,6 +13,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+// Добавьте необходимые импорты:
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import java.io.IOException;
+import java.util.Map;
+
 import java.util.List;
 import java.util.Map;
 
@@ -92,5 +101,31 @@ public class MusicBandController {
     public Map<String, Object> removeParticipant(@PathVariable Long id) {
         long newCount = musicBandService.removeParticipant(id);
         return Map.of("numberOfParticipants", newCount);
+    }
+
+    @PostMapping("/import/xml")
+    public ResponseEntity<Map<String, Object>> importXml(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("imported", 0, "message", "Файл пуст."));
+        }
+
+        try {
+            // Вызов нового метода сервиса
+            int importedCount = musicBandService.importBandsFromXml(file.getInputStream());
+
+            String message = importedCount > 0
+                    ? String.format("Успешно импортировано %d музыкальных групп(а) из XML.", importedCount)
+                    : "В XML-файле не найдено групп для импорта.";
+
+            return ResponseEntity.ok(Map.of("imported", importedCount, "message", message));
+        } catch (RuntimeException e) {
+            // Ошибка парсинга или бизнес-логики
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("imported", 0, "error", e.getMessage()));
+        } catch (IOException e) {
+            // Ошибка чтения файла
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("imported", 0, "error", "Не удалось прочитать файл: " + e.getMessage()));
+        }
     }
 }

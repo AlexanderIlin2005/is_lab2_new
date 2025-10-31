@@ -227,6 +227,14 @@
                     <button type="submit" class="btn-warning">Remove Participant</button>
                 </form>
             </div>
+
+            <div class="operation-group">
+                <h4>Bulk Import XML 📂</h4>
+                <form id="xmlImportForm" class="operation-form" enctype="multipart/form-data">
+                    <input type="file" id="xmlFile" name="file" accept=".xml" required>
+                    <button type="submit" class="btn-success">Import XML</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -340,6 +348,8 @@
         const ALBUM_API_URL = '/api/albums';
         let albums = [];
 
+        const XML_IMPORT_URL = `${API_URL}/import/xml`; // <-- НОВАЯ КОНСТАНТА
+
         function connectToWebSocket() {
 
         const socket = new SockJS('/ws');
@@ -391,21 +401,30 @@
 
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadBands();
-            loadStudios();
-            loadAlbums();
-            loadStudioSelects();
+    // 1. Инициализация и загрузка существующих данных
+    loadBands();
+    loadStudios();
+    loadAlbums();
+    loadStudioSelects();
 
-
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const sectionId = link.getAttribute('href').substring(1);
-                    showSection(sectionId);
-                });
-            });
-            connectToWebSocket();
+    // 2. Привязка навигации
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sectionId = link.getAttribute('href').substring(1);
+            showSection(sectionId);
         });
+    });
+
+    // 3. НОВАЯ ЛОГИКА: Привязка формы импорта XML 📂
+    const xmlImportForm = document.getElementById('xmlImportForm');
+    if (xmlImportForm) {
+        xmlImportForm.addEventListener('submit', handleXmlImport);
+    }
+
+    // 4. Инициализация WebSocket
+    connectToWebSocket();
+});
 
 
         function showError(message) {
@@ -1199,6 +1218,53 @@ function updateAlbumSelects() {
     if (currentValue && Array.from(bestAlbumSelect.options).some(opt => opt.value == currentValue)) {
         bestAlbumSelect.value = currentValue;
     }
+}
+
+        // index.html (внутри <script> тега)
+
+function handleXmlImport(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('xmlFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showError('⚠️ Пожалуйста, выберите XML файл для импорта.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file); // 'file' - имя параметра, ожидаемое контроллером
+
+    fetch(XML_IMPORT_URL, {
+        method: 'POST',
+        body: formData // Отправляем файл
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        // Обработка ошибок, возвращаемых контроллером (4xx, 5xx)
+        return response.json().then(errorData => {
+            throw new Error(errorData.error || 'Ошибка при импорте XML.');
+        }).catch(() => {
+            throw new Error(`Импорт не удался. Статус: ${response.status} ${response.statusText}`);
+        });
+    })
+    .then(data => {
+        // Успешный импорт
+        if (data.imported > 0) {
+            showSuccess(`✅ ${data.message || 'Импорт завершен успешно.'}`);
+        } else {
+            showInfo(`ℹ️ ${data.message || 'Импорт завершен, но группы не найдены.'}`);
+        }
+
+        fileInput.value = ''; // Очищаем поле файла
+        loadBands(); // Обновляем список групп
+    })
+    .catch(error => {
+        showError('❌ ' + error.message);
+    });
 }
 
     </script>
