@@ -11,6 +11,9 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlAccessType;
 
+// НОВЫЕ ИМПОРТЫ
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
 @Data
 @NoArgsConstructor
 @XmlRootElement(name = "musicBand") // Имя корневого элемента в списке
@@ -24,6 +27,9 @@ public class MusicBandCreateDto {
     private String description;
     private AlbumCreateDto bestAlbum;
     private int albumCount;
+
+    // ПРИМЕНЯЕМ АДАПТЕР К ПОЛЮ ДАТЫ
+    @XmlJavaTypeAdapter(ZonedDateTimeAdapter.class)
     private ZonedDateTime establishmentDate;
     private StudioCreateDto studio;
 }
