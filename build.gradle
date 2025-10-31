@@ -44,7 +44,7 @@ dependencies {
     implementation "org.springframework:spring-orm:${springVersion}"
 
     // Для работы с датами и временем (ZonedDateTime)
-    implementation 'org.springframework.boot:spring-boot-starter-web:3.3.1' // Это уже должно включать Jackson
+    //implementation 'org.springframework.boot:spring-boot-starter-web:3.3.1' // Это уже должно включать Jackson
 
 // Spring Security для аутентификации и авторизации
     implementation "org.springframework.security:spring-security-web:${springSecurityVersion}"
@@ -97,7 +97,10 @@ dependencies {
     implementation "org.springframework:spring-websocket:${springVersion}"
     implementation "org.springframework:spring-messaging:${springVersion}"
 
-    // НОВЫЕ ЗАВИСИМОСТИ ДЛЯ WEBSOCKET И JAKARTA
+    // Явно добавляем Jakarta WebSocket API 2.1.1 для совместимости со Spring 6.x
+    implementation 'jakarta.websocket:jakarta.websocket-api:2.1.1'
+
+    // Зависимости для WEBSOCKET И JAKARTA (Jetty 11)
     implementation 'org.eclipse.jetty.websocket:websocket-jakarta-server:11.0.24'
     implementation 'org.eclipse.jetty.websocket:websocket-jakarta-client:11.0.24'
 
