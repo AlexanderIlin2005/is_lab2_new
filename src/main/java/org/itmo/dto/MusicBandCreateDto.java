@@ -28,7 +28,7 @@ public class MusicBandCreateDto {
     private AlbumCreateDto bestAlbum;
     private int albumCount;
 
-    // ПРИМЕНЯЕМ АДАПТЕР К ПОЛЮ ДАТЫ
+    // ПРИМЕНЯЕМ АДАПТЕР К ПОЛЮ ДАТЫ.
     @XmlJavaTypeAdapter(ZonedDateTimeAdapter.class)
     private ZonedDateTime establishmentDate;
     private StudioCreateDto studio;
