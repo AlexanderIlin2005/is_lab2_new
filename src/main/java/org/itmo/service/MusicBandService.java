@@ -227,6 +227,8 @@ public class MusicBandService {
         return musicBand.getNumberOfParticipants();
     }
 
+    // package org.itmo.service;
+// ...
     @Transactional
     public int importBandsFromXml(InputStream xmlData) {
         try {
@@ -242,16 +244,18 @@ public class MusicBandService {
                 return 0;
             }
 
-            // Преобразуем MusicBandCreateDto в Entity с помощью существующего маппера
-            List<MusicBand> newBands = dtos.stream()
-                    .map(musicBandMapper::toEntity)
-                    .toList();
+            int count = 0;
+            // ГЛАВНОЕ ИЗМЕНЕНИЕ: ИСПОЛЬЗУЕМ МЕТОД CREATE ДЛЯ КАЖДОГО DTO
+            for (MusicBandCreateDto dto : dtos) {
+                this.create(dto);
+                count++;
+            }
 
-            musicBandRepository.saveAll(newBands);
+            // musicBandRepository.saveAll(newBands); <-- ЭТО БОЛЬШЕ НЕ НУЖНО
 
             notifyClients("BAND_BULK_IMPORTED");
 
-            return newBands.size();
+            return count; // Возвращаем количество успешно созданных
         } catch (JAXBException e) {
             throw new RuntimeException("Ошибка парсинга XML-файла. Проверьте формат и структуру: " + e.getMessage(), e);
         } catch (Exception e) {
