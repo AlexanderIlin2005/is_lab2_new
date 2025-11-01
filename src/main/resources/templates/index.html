@@ -1222,7 +1222,7 @@ function updateAlbumSelects() {
 
         // index.html (внутри <script> тега)
 
-function handleXmlImport(event) {
+async function handleXmlImport(event) { // <-- 1. Добавили 'async'
     event.preventDefault();
 
     const fileInput = document.getElementById('xmlFile');
@@ -1234,37 +1234,47 @@ function handleXmlImport(event) {
     }
 
     const formData = new FormData();
-    formData.append('file', file); // 'file' - имя параметра, ожидаемое контроллером
+    formData.append('file', file);
 
-    fetch(XML_IMPORT_URL, {
-        method: 'POST',
-        body: formData // Отправляем файл
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.json();
-        }
-        // Обработка ошибок, возвращаемых контроллером (4xx, 5xx)
-        return response.json().then(errorData => {
-            throw new Error(errorData.error || 'Ошибка при импорте XML.');
-        }).catch(() => {
-            throw new Error(`Импорт не удался. Статус: ${response.status} ${response.statusText}`);
+    // 2. Обернули в try...catch
+    try {
+        const response = await fetch(XML_IMPORT_URL, { // <-- 3. Добавили 'await'
+            method: 'POST',
+            body: formData
         });
-    })
-    .then(data => {
-        // Успешный импорт
-        if (data.imported > 0) {
-            showSuccess(`✅ ${data.message || 'Импорт завершен успешно.'}`);
+
+        // 4. Успешная загрузка (2xx)
+        if (response.ok) {
+            const data = await response.json();
+            if (data.imported > 0) {
+                showSuccess(`✅ ${data.message || 'Импорт завершен успешно.'}`);
+            } else {
+                showInfo(`ℹ️ ${data.message || 'Импорт завершен, но группы не найдены.'}`);
+            }
+            fileInput.value = '';
+            loadBands();
         } else {
-            showInfo(`ℹ️ ${data.message || 'Импорт завершен, но группы не найдены.'}`);
+            // 5. Обработка ошибки сервера (5xx)
+            let errorMsg = `Импорт не удался. Статус: ${response.status} ${response.statusText}`;
+
+            // Пытаемся получить детальное сообщение об ошибке из JSON-ответа
+            try {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    errorMsg = errorData.error; // <-- Вот та самая ошибка из вашего JSON!
+                }
+            } catch (e) {
+                // Ошибка (например, 500 Internal Server Error вернул HTML, а не JSON)
+                console.warn("Не удалось прочитать JSON из ответа об ошибке.");
+            }
+
+            throw new Error(errorMsg); // Бросаем ошибку в главный catch
         }
 
-        fileInput.value = ''; // Очищаем поле файла
-        loadBands(); // Обновляем список групп
-    })
-    .catch(error => {
+    } catch (error) {
+        // 6. Отображаем ошибку
         showError('❌ ' + error.message);
-    });
+    }
 }
 
     </script>
