@@ -245,6 +245,7 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle">Create New Band</h2>
+            <div id="modalFormErrors" class="error-message" style="display:none; margin-bottom: 15px;"></div>
             <form id="bandForm" onsubmit="handleFormSubmit(event)">
                 <input type="hidden" id="bandId">
                 <label>Name: <input type="text" id="name" required></label>
@@ -344,11 +345,12 @@
         const API_URL = '/api/music-bands';
         const STUDIO_API_URL = '/api/studios';
         const resultsDiv = document.getElementById('results');
+        const modal = document.getElementById('bandModal'); // Ссылка на модальное окно
 
         const ALBUM_API_URL = '/api/albums';
         let albums = [];
 
-        const XML_IMPORT_URL = `${API_URL}/import/xml`; // <-- НОВАЯ КОНСТАНТА
+        const XML_IMPORT_URL = `${API_URL}/import/xml`;
 
         function connectToWebSocket() {
 
@@ -428,6 +430,19 @@
 
 
         function showError(message) {
+            // --- ИЗМЕНЕННАЯ ЛОГИКА: Проверка, открыто ли модальное окно ---
+            if (modal && modal.style.display === 'block') {
+                const modalErrors = document.getElementById('modalFormErrors');
+                if (modalErrors) {
+                    modalErrors.innerHTML = `❌ Error: ${message}`;
+                    modalErrors.style.display = 'block';
+                    // Предотвращаем скролл к resultsDiv, если ошибка показана в модальном окне
+                    return;
+                }
+            }
+            // -----------------------------------------------------
+
+            // Оригинальная логика для глобальных ошибок (XML Import, Special Operations)
             resultsDiv.innerHTML = `<div class="error-message">❌ ${message}</div>`;
             resultsDiv.scrollIntoView({ behavior: 'smooth' });
         }
@@ -724,7 +739,6 @@
         }
 
 
-        const modal = document.getElementById('bandModal');
         const studioModal = document.getElementById('studioModal');
 
         function openCreateModal() {
@@ -771,6 +785,7 @@
                 document.getElementById('modalTitle').textContent = 'Edit Music Band';
                 document.getElementById('submitButton').textContent = 'Update';
                 modal.style.display = 'block';
+                clearFormErrors(); // Очистка ошибок при открытии модального окна
             })
             .catch(error => {
                 console.error('Error loading band:', error);
@@ -788,6 +803,14 @@
             document.querySelectorAll('input, select, textarea').forEach(el => {
                 el.classList.remove('error');
             });
+
+            // --- НОВОЕ: Очистка контейнера ошибок в модальном окне ---
+            const modalErrors = document.getElementById('modalFormErrors');
+            if (modalErrors) {
+                modalErrors.style.display = 'none';
+                modalErrors.textContent = '';
+            }
+            // --------------------------------------------------------
         }
 
         function showFieldError(fieldName, message) {
@@ -874,39 +897,32 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
     })
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА ОБРАБОТКИ ОШИБОК ---
     .then(async response => {
         console.log('Response status:', response.status);
 
         if (!response.ok) {
             let errorMsg = `Submission failed. Status: ${response.status} ${response.statusText}`;
 
-            // 1. Попытка прочитать тело ответа как JSON
             try {
                 const errorData = await response.json();
 
-                // Чтение поля 'message' из JSON (возвращается при 409 Conflict)
                 if (errorData.message) {
                     errorMsg = errorData.message;
                 }
-                // Чтение поля 'error' (для консистентности или других 500 ошибок)
                 else if (errorData.error) {
                     errorMsg = errorData.error;
                 }
             } catch (e) {
-                // Если ответ не JSON (например, HTML 500), читаем текст для лога
                 const text = await response.text();
                 console.log('Error response text (non-JSON):', text);
                 errorMsg = text || errorMsg;
             }
 
-            // Бросаем чистое сообщение об ошибке
             throw new Error(errorMsg);
         }
 
         return response.json();
     })
-    // ---------------------------------------------
     .then((data) => {
         console.log('Success response:', data);
         showSuccess(`Band ${bandId ? 'updated' : 'created'} successfully!`);
@@ -915,6 +931,8 @@
     })
     .catch(error => {
         console.error('Error:', error);
+        // Поскольку showError теперь контекстно-зависимый,
+        // мы вызываем его, и он сам решает, куда вывести сообщение.
         try {
             // Если ошибка содержит JSON, который мы не смогли обработать выше (например, Spring Validation)
             const errorData = JSON.parse(error.message);
@@ -922,9 +940,10 @@
                 errorData.errors.forEach(err => {
                     showFieldError(err.field, err.defaultMessage);
                 });
+                // Отображаем общее сообщение внутри модального окна
                 showError('Please correct the validation errors above.');
             } else {
-                // Вывод сообщения об ошибке
+                // Вывод сообщения об ошибке (например, Нарушение уникальности)
                 showError('Error: ' + error.message);
             }
         } catch (e) {
@@ -1248,7 +1267,7 @@ function updateAlbumSelects() {
 
         // index.html (внутри <script> тега)
 
-async function handleXmlImport(event) { // <-- 1. Добавили 'async'
+async function handleXmlImport(event) {
     event.preventDefault();
 
     const fileInput = document.getElementById('xmlFile');
@@ -1262,14 +1281,12 @@ async function handleXmlImport(event) { // <-- 1. Добавили 'async'
     const formData = new FormData();
     formData.append('file', file);
 
-    // 2. Обернули в try...catch
     try {
-        const response = await fetch(XML_IMPORT_URL, { // <-- 3. Добавили 'await'
+        const response = await fetch(XML_IMPORT_URL, {
             method: 'POST',
             body: formData
         });
 
-        // 4. Успешная загрузка (2xx)
         if (response.ok) {
             const data = await response.json();
             if (data.imported > 0) {
@@ -1280,25 +1297,21 @@ async function handleXmlImport(event) { // <-- 1. Добавили 'async'
             fileInput.value = '';
             loadBands();
         } else {
-            // 5. Обработка ошибки сервера (5xx)
             let errorMsg = `Импорт не удался. Статус: ${response.status} ${response.statusText}`;
 
-            // Пытаемся получить детальное сообщение об ошибке из JSON-ответа
             try {
                 const errorData = await response.json();
                 if (errorData.error) {
-                    errorMsg = errorData.error; // <-- Вот та самая ошибка из вашего JSON!
+                    errorMsg = errorData.error;
                 }
             } catch (e) {
-                // Ошибка (например, 500 Internal Server Error вернул HTML, а не JSON)
                 console.warn("Не удалось прочитать JSON из ответа об ошибке.");
             }
 
-            throw new Error(errorMsg); // Бросаем ошибку в главный catch
+            throw new Error(errorMsg);
         }
 
     } catch (error) {
-        // 6. Отображаем ошибку
         showError('❌ ' + error.message);
     }
 }
