@@ -14,8 +14,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+import org.springframework.transaction.annotation.EnableTransactionManagement; // <--- НОВЫЙ ИМПОРТ
+
 @Configuration
 @EnableWebSecurity
+@EnableTransactionManagement(proxyTargetClass = true) // <--- ИСПРАВЛЕНИЕ: Включаем CGLIB проксирование
 public class SecurityConfig {
 
     private final UserService userService; // ОК, теперь UserService существует
