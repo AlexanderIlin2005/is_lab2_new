@@ -25,6 +25,10 @@ import java.util.Map;
 import java.util.List;
 import java.util.Map;
 
+// НОВЫЕ ИМПОРТЫ
+import jakarta.validation.ValidationException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
 @RestController
 @RequestMapping("/api/music-bands")
 public class MusicBandController {
@@ -127,5 +131,21 @@ public class MusicBandController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("imported", 0, "error", "Не удалось прочитать файл: " + e.getMessage()));
         }
+    }
+
+    // --- НОВЫЙ МЕТОД: ОБРАБОТЧИК ОШИБОК УНИКАЛЬНОСТИ ---
+    /**
+     * Обработчик для бизнес-ошибок валидации (Нарушение уникальности),
+     * возникающих при CREATE/UPDATE.
+     * Возвращает HTTP 409 Conflict (JSON).
+     */
+    @ExceptionHandler(ValidationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleValidationException(ValidationException ex) {
+        return Map.of(
+                "status", HttpStatus.CONFLICT.value(),
+                "error", "Conflict",
+                "message", ex.getMessage() // Чистое сообщение об ошибке
+        );
     }
 }

@@ -16,10 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import org.itmo.dto.MusicBandCreateDto; // Используем правильный DTO
+import org.itmo.dto.MusicBandCreateDto;
 import java.io.InputStream;
 
-// НУЖНЫЕ ИМПОРТЫ ДЛЯ JAXB:
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Unmarshaller;
 import jakarta.xml.bind.JAXBException;
@@ -28,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import jakarta.validation.ValidationException; // Добавьте, если необходимо (или используйте RuntimeException)
+import jakarta.validation.ValidationException;
 
 @Service
 @Transactional
@@ -77,7 +76,9 @@ public class MusicBandService {
     }
 
     public MusicBandResponseDto create(@Valid MusicBandCreateDto dto) {
-        checkUniqueness(dto);
+        // --- ИЗМЕНЕНИЕ ---
+        checkUniqueness(dto, null); // Создание: ID для исключения = null
+        // -----------------
         MusicBand musicBand = musicBandMapper.toEntity(dto);
 
 
@@ -123,6 +124,22 @@ public class MusicBandService {
     public MusicBandResponseDto update(@NotNull Long id, @Valid MusicBandCreateDto patch) {
         MusicBand existing = musicBandRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MusicBand not found: " + id));
+
+
+        // --- ИЗМЕНЕНИЕ: РУЧНОЕ СОЗДАНИЕ DTO ДЛЯ ПРОВЕРКИ УНИКАЛЬНОСТИ ---
+        MusicBandCreateDto futureDto = new MusicBandCreateDto();
+
+        // Копируем текущее состояние (которое может быть null, если не задано)
+        futureDto.setName(existing.getName());
+        futureDto.setGenre(existing.getGenre());
+
+        // Применяем изменения из patch для проверки
+        if (patch.getName() != null) futureDto.setName(patch.getName());
+        if (patch.getGenre() != null) futureDto.setGenre(patch.getGenre());
+
+        // ПРОВЕРКА УНИКАЛЬНОСТИ (с исключением текущего ID)
+        checkUniqueness(futureDto, id);
+        // -----------------------------------------------------------------
 
 
         if (patch.getName() != null) existing.setName(patch.getName());
@@ -305,7 +322,7 @@ public class MusicBandService {
                 validateDtoForImport(dto, i);
 
                 // НОВАЯ ПРОВЕРКА УНИКАЛЬНОСТИ
-                checkUniqueness(dto);
+                checkUniqueness(dto, null); // Импорт: ID для исключения = null
             }
 
             // 3. СОЗДАНИЕ (Requirement 2)
@@ -332,13 +349,15 @@ public class MusicBandService {
 
     /**
      * НОВЫЙ МЕТОД:
-     * Проверяет, что не существует другой группы с таким же именем И жанром.
+     * Проверяет, что не существует другой группы с таким же именем И жанром,
+     * исключая группу с bandIdToExclude.
      *
      * ВНИМАНИЕ: Реализация является НЕЭФФЕКТИВНОЙ, так как использует существующий
      * метод findByGenre() и выполняет фильтрацию в памяти (чтобы не менять интерфейс репозитория).
-     * @param dto DTO создаваемой группы.
+     * @param dto DTO создаваемой/обновляемой группы.
+     * @param bandIdToExclude ID группы, которую нужно исключить из проверки (null при создании).
      */
-    private void checkUniqueness(MusicBandCreateDto dto) {
+    private void checkUniqueness(MusicBandCreateDto dto, Long bandIdToExclude) {
         // Эти проверки должны пройти в validateDtoForImport, но проверяем на всякий случай
         if (dto.getName() == null || dto.getGenre() == null) {
             return;
@@ -347,9 +366,12 @@ public class MusicBandService {
         // 1. Получаем все группы с таким же жанром
         List<MusicBand> bandsOfSameGenre = musicBandRepository.findByGenre(dto.getGenre());
 
-        // 2. Проверяем, есть ли среди них группа с точно таким же именем
+        // 2. Проверяем, есть ли среди них группа с точно таким же именем,
+        //    исключая группу с ID, которую мы обновляем.
         boolean exists = bandsOfSameGenre.stream()
-                .anyMatch(band -> band.getName().equalsIgnoreCase(dto.getName()));
+                // Исключаем текущую группу при обновлении:
+                .filter(band -> bandIdToExclude == null || !band.getId().equals(bandIdToExclude))
+                .anyMatch(band -> dto.getName().equalsIgnoreCase(band.getName()));
 
         if (exists) {
             throw new ValidationException(
