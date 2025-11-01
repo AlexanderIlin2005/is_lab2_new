@@ -30,7 +30,7 @@ public class User implements UserDetails {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
+    // @Enumerated(EnumType.STRING) // <-- УДАЛИТЬ ЭТУ СТРОКУ
     @Column(nullable = false, columnDefinition = "user_role")
     private UserRole role;
 
