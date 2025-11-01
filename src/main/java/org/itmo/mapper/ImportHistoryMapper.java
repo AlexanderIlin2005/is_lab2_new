@@ -1,21 +1,19 @@
+// src/main/java/org.itmo.mapper/ImportHistoryMapper.java
+
 package org.itmo.mapper;
 
 import org.itmo.dto.ImportHistoryResponseDto;
 import org.itmo.model.ImportHistory;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
 
-import java.util.List;
-
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@Mapper(componentModel = "spring")
 public interface ImportHistoryMapper {
 
     /**
-     * Маппинг поля launchedBy.username в launchedByUsername в DTO.
+     * Маппинг сущности ImportHistory в DTO.
+     * Мы вручную мапим поле launchedBy (сущность User) на launchedByUsername (String).
      */
     @Mapping(source = "launchedBy.username", target = "launchedByUsername")
-    ImportHistoryResponseDto toResponseDto(ImportHistory entity);
-
-    List<ImportHistoryResponseDto> toResponseDto(List<ImportHistory> entities);
+    ImportHistoryResponseDto toResponseDto(ImportHistory history);
 }

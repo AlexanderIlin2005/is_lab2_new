@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import org.itmo.model.enums.UserRole; // !!! ДОБАВИТЬ ЭТОТ ИМПОРТ !!!
 
 @RestController
 @RequestMapping("/api/import-history")
@@ -24,9 +25,8 @@ public class ImportHistoryController {
     @GetMapping
     public ResponseEntity<List<ImportHistoryResponseDto>> getHistory(@AuthenticationPrincipal User currentUser) {
 
-        // Роль ADMIN определяется по имени роли
-        boolean isAdmin = currentUser != null && currentUser.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ADMIN"));
+        // ИСПРАВЛЕНИЕ: Проверяем одно поле роли
+        boolean isAdmin = currentUser != null && currentUser.getRole() == UserRole.ADMIN;
 
         List<ImportHistoryResponseDto> history = historyService.getImportHistory(currentUser, isAdmin);
 

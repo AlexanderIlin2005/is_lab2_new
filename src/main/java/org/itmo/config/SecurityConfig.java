@@ -1,6 +1,6 @@
 package org.itmo.config;
 
-import org.itmo.service.UserService;
+import org.itmo.service.UserService; // ОК, теперь UserService существует
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,9 +18,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final UserService userService;
+    private final UserService userService; // ОК, теперь UserService существует
 
-    public SecurityConfig(UserService userService) {
+    public SecurityConfig(UserService userService) { // ОК, теперь UserService существует
         this.userService = userService;
     }
 
@@ -48,25 +48,25 @@ public class SecurityConfig {
                 .httpBasic(httpBasic -> {})
                 // Сессия Stateless (без сохранения состояния на сервере)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Настройка правил авторизации
+                // Настройка правил авторизации (с использованием .hasAuthority, т.к. UserDetails возвращает роли как GrantedAuthority)
                 .authorizeHttpRequests(auth -> auth
                         // Разрешаем доступ к статическим ресурсам и WebSocket
                         .requestMatchers("/", "/index.html", "/ws/**").permitAll()
 
                         // Music Bands: чтение всем, остальные операции - аутентифицированным
                         .requestMatchers(HttpMethod.GET, "/api/music-bands/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/music-bands").hasAnyAuthority("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/music-bands/**").hasAnyAuthority("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/music-bands/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/music-bands").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/music-bands/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/music-bands/**").hasAuthority("ROLE_ADMIN")
 
                         // Импорт XML - только ADMIN
-                        .requestMatchers(HttpMethod.POST, "/api/music-bands/import/xml").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/music-bands/import/xml").hasAuthority("ROLE_ADMIN")
 
                         // История импорта - только аутентифицированным
                         .requestMatchers(HttpMethod.GET, "/api/import-history").authenticated()
 
                         // Studios & Albums - все операции только для аутентифицированных
-                        .requestMatchers("/api/studios/**", "/api/albums/**").hasAnyAuthority("USER", "ADMIN")
+                        .requestMatchers("/api/studios/**", "/api/albums/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
                         // Все остальные запросы должны быть аутентифицированы
                         .anyRequest().authenticated()

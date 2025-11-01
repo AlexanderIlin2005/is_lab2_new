@@ -37,7 +37,7 @@ public class ImportHistoryService {
         if (isAdmin) {
             // ADMIN видит всю историю
             return historyRepository.findAll(sort).stream()
-                    .map(historyMapper::toDto)
+                    .map(historyMapper::toResponseDto) // <-- ИСПРАВЛЕНО
                     .collect(Collectors.toList());
         } else {
             // Обычный пользователь видит только свою историю
@@ -45,7 +45,7 @@ public class ImportHistoryService {
                 return List.of();
             }
             return historyRepository.findByLaunchedBy(currentUser, sort).stream()
-                    .map(historyMapper::toDto)
+                    .map(historyMapper::toResponseDto) // <-- ИСПРАВЛЕНО
                     .collect(Collectors.toList());
         }
     }
