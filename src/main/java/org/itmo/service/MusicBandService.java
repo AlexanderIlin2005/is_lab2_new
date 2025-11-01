@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import jakarta.validation.ValidationException; // Добавьте, если необходимо (или используйте RuntimeException)
+
 @Service
 @Transactional
 public class MusicBandService {
@@ -227,39 +229,97 @@ public class MusicBandService {
         return musicBand.getNumberOfParticipants();
     }
 
-    // package org.itmo.service;
-// ...
+    /**
+     * НОВЫЙ МЕТОД:
+     * Ручная валидация DTO из XML на соответствие новым бизнес-правилам.
+     */
+    private void validateDtoForImport(MusicBandCreateDto dto, int index) {
+        String prefix = "Группа #" + (index + 1) + " (" + (dto.getName() != null ? dto.getName() : "N/A") + "): ";
+
+        // name: Поле не может быть null, Строка не может быть пустой
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            throw new ValidationException(prefix + "Поле 'name' не может быть null или пустым.");
+        }
+
+        // coordinates: Поле не может быть null
+        if (dto.getCoordinates() == null) {
+            throw new ValidationException(prefix + "Поле 'coordinates' не может быть null.");
+        }
+
+        // genre: Поле не может быть null
+        if (dto.getGenre() == null) {
+            throw new ValidationException(prefix + "Поле 'genre' не может быть null.");
+        }
+
+        // numberOfParticipants: Значение поля должно быть больше 0
+        if (dto.getNumberOfParticipants() <= 0) {
+            throw new ValidationException(prefix + "Поле 'numberOfParticipants' должно быть > 0.");
+        }
+
+        // singlesCount: Значение поля должно быть больше 0 (в DTO это Long)
+        if (dto.getSingleCount() == null || dto.getSingleCount() <= 0) {
+            throw new ValidationException(prefix + "Поле 'singlesCount' не может быть null и должно быть > 0.");
+        }
+
+        // description: Поле не может быть null
+        if (dto.getDescription() == null) {
+            throw new ValidationException(prefix + "Поле 'description' не может быть null (в XML оно может быть пустым тегом, но не отсутствовать).");
+        }
+
+        // albumsCount: Поле не может быть null, Значение поля должно быть больше 0 (в DTO это int)
+        if (dto.getAlbumCount() <= 0) {
+            throw new ValidationException(prefix + "Поле 'albumCount' должно быть > 0.");
+        }
+
+        // establishmentDate: Поле не может быть null
+        if (dto.getEstablishmentDate() == null) {
+            throw new ValidationException(prefix + "Поле 'establishmentDate' не может быть null.");
+        }
+    }
+
+
+    /**
+     * ИЗМЕНЕННЫЙ МЕТОД ИМПОРТА
+     */
     @Transactional
     public int importBandsFromXml(InputStream xmlData) {
         try {
-            // Создаем контекст JAXB, используя MusicBandListWrapper и MusicBandCreateDto
+            // 1. Парсинг XML
             JAXBContext jaxbContext = JAXBContext.newInstance(MusicBandListWrapper.class, MusicBandCreateDto.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-
             MusicBandListWrapper wrapper = (MusicBandListWrapper) unmarshaller.unmarshal(xmlData);
-
             List<MusicBandCreateDto> dtos = wrapper.getMusicBands();
 
             if (dtos == null || dtos.isEmpty()) {
                 return 0;
             }
 
+            // 2. ВАЛИДАЦИЯ (Requirement 1)
+            // Сначала проверяем *все* DTO на соответствие бизнес-правилам.
+            // Если хотя бы один не пройдет, транзакция прервется до вставки.
+            for (int i = 0; i < dtos.size(); i++) {
+                validateDtoForImport(dtos.get(i), i);
+            }
+
+            // 3. СОЗДАНИЕ (Requirement 2)
+            // Все DTO валидны, теперь создаем их.
+            // Метод create() выполнит проверки (например, "Studio not found")
+            // Если он упадет, @Transactional откатит все предыдущие.
             int count = 0;
-            // ГЛАВНОЕ ИЗМЕНЕНИЕ: ИСПОЛЬЗУЕМ МЕТОД CREATE ДЛЯ КАЖДОГО DTO
             for (MusicBandCreateDto dto : dtos) {
-                this.create(dto);
+                this.create(dto); // Используем существующий метод create
                 count++;
             }
 
-            // musicBandRepository.saveAll(newBands); <-- ЭТО БОЛЬШЕ НЕ НУЖНО
-
             notifyClients("BAND_BULK_IMPORTED");
+            return count;
 
-            return count; // Возвращаем количество успешно созданных
         } catch (JAXBException e) {
-            throw new RuntimeException("Ошибка парсинга XML-файла. Проверьте формат и структуру: " + e.getMessage(), e);
+            throw new RuntimeException("Ошибка парсинга XML: " + e.getMessage(), e);
+        } catch (ValidationException | EntityNotFoundException e) { // Ловим ошибки валидации или create()
+            throw new RuntimeException("Ошибка импорта (транзакция будет отменена): " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new RuntimeException("Произошла ошибка при массовом импорте: " + e.getMessage(), e);
+            throw new RuntimeException("Неизвестная ошибка (транзакция будет отменена): " + e.getMessage(), e);
         }
     }
 }
