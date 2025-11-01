@@ -4,37 +4,49 @@ import org.itmo.dto.ImportHistoryResponseDto;
 import org.itmo.mapper.ImportHistoryMapper;
 import org.itmo.model.ImportHistory;
 import org.itmo.model.User;
-import org.itmo.model.enums.UserRole;
 import org.itmo.repository.ImportHistoryRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ImportHistoryService {
 
     private final ImportHistoryRepository historyRepository;
     private final ImportHistoryMapper historyMapper;
 
+    public ImportHistoryService(ImportHistoryRepository historyRepository, ImportHistoryMapper historyMapper) {
+        this.historyRepository = historyRepository;
+        this.historyMapper = historyMapper;
+    }
+
     /**
-     * Получает историю импорта с учетом роли пользователя.
-     * @param currentUser Пользователь, выполняющий запрос (полученный из Spring Security).
-     * @return Список DTO истории импорта.
+     * Возвращает историю импорта.
+     * ADMIN видит всю историю, обычный USER - только свою.
+     * @param currentUser Объект User, полученный из контекста безопасности.
+     * @param isAdmin Флаг, указывающий, является ли пользователь ADMIN.
+     * @return Список ImportHistoryResponseDto.
      */
-    public List<ImportHistoryResponseDto> getImportHistory(User currentUser) {
-        List<ImportHistory> history;
+    public List<ImportHistoryResponseDto> getImportHistory(User currentUser, boolean isAdmin) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "startTime");
 
-        // Администратор видит всю историю
-        if (currentUser.getRole() == UserRole.ADMIN) {
-            history = historyRepository.findAllByOrderByIdDesc();
+        if (isAdmin) {
+            // ADMIN видит всю историю
+            return historyRepository.findAll(sort).stream()
+                    .map(historyMapper::toDto)
+                    .collect(Collectors.toList());
+        } else {
+            // Обычный пользователь видит только свою историю
+            if (currentUser == null) {
+                return List.of();
+            }
+            return historyRepository.findByLaunchedBy(currentUser, sort).stream()
+                    .map(historyMapper::toDto)
+                    .collect(Collectors.toList());
         }
-        // Обычный пользователь видит только свои операции
-        else {
-            history = historyRepository.findAllByLaunchedByOrderByIdDesc(currentUser);
-        }
-
-        return historyMapper.toResponseDto(history);
     }
 }

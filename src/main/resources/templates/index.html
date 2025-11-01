@@ -384,13 +384,13 @@
         const IMPORT_HISTORY_API_URL = '/api/import-history';
 
 // ВНИМАНИЕ: Это заглушка данных для демонстрации.
-const MOCK_IMPORT_HISTORY = [
-    { id: 5, launchedByUsername: 'admin', startTime: '2025-11-01T09:00:00', status: 'SUCCESS', addedCount: 12, errorDetails: null },
-    { id: 4, launchedByUsername: 'user', startTime: '2025-10-31T15:45:00', status: 'SUCCESS', addedCount: 3, errorDetails: null },
-    { id: 3, launchedByUsername: 'admin', startTime: '2025-10-31T12:05:00', status: 'SUCCESS', addedCount: 1, errorDetails: null },
-    { id: 2, launchedByUsername: 'user', startTime: '2025-10-31T11:30:00', status: 'FAILED', addedCount: 0, errorDetails: 'Validation error: Unique name/genre violation.' },
-    { id: 1, launchedByUsername: 'admin', startTime: '2025-10-31T10:00:00', status: 'PENDING', addedCount: null, errorDetails: null },
-];
+//const MOCK_IMPORT_HISTORY = [
+//    { id: 5, launchedByUsername: 'admin', startTime: '2025-11-01T09:00:00', status: 'SUCCESS', addedCount: 12, errorDetails: null },
+//    { id: 4, launchedByUsername: 'user', startTime: '2025-10-31T15:45:00', status: 'SUCCESS', addedCount: 3, errorDetails: null },
+//    { id: 3, launchedByUsername: 'admin', startTime: '2025-10-31T12:05:00', status: 'SUCCESS', addedCount: 1, errorDetails: null },
+//    { id: 2, launchedByUsername: 'user', startTime: '2025-10-31T11:30:00', status: 'FAILED', addedCount: 0, errorDetails: 'Validation error: Unique name/genre violation.' },
+//    { id: 1, launchedByUsername: 'admin', startTime: '2025-10-31T10:00:00', status: 'PENDING', addedCount: null, errorDetails: null },
+//];
 
         function connectToWebSocket() {
 
@@ -1362,41 +1362,43 @@ async function handleXmlImport(event) {
 }
 
 
+// index.html (внутри <script> тега)
+
+// ...
+// const MOCK_IMPORT_HISTORY = [ ... ]; // Закомментируйте или удалите моки!
+// ...
+
 function loadImportHistory() {
     const tableBody = document.querySelector('#importHistoryTable tbody');
-    const selectedRole = document.getElementById('userRoleSimulator').value;
+    // Удалите или закомментируйте строку: const selectedRole = document.getElementById('userRoleSimulator').value;
+
+    // В коде фронтенда удалите select id="userRoleSimulator", так как теперь роли определяет бэкенд
+    const userRoleSimulator = document.getElementById('userRoleSimulator');
+    if (userRoleSimulator) userRoleSimulator.parentNode.removeChild(userRoleSimulator);
 
     tableBody.innerHTML = '<tr><td colspan="6">Загрузка истории...</td></tr>';
 
-    // --- БЛОК ДЛЯ РЕАЛЬНОГО API ЗАПРОСА (РАСКОММЕНТИРОВАТЬ ПРИ ПОДКЛЮЧЕНИИ БЭКЕНДА) ---
-    /*
+    // --- Реальный API-вызов ---
     fetch(IMPORT_HISTORY_API_URL)
         .then(response => {
+            if (response.status === 401) {
+                // Если пользователь не авторизован (Basic Auth не сработал)
+                tableBody.innerHTML = '<tr><td colspan="6" style="color: orange;">🔒 Для просмотра истории требуется авторизация.</td></tr>';
+                throw new Error('Unauthorized');
+            }
             if (!response.ok) throw new Error('Failed to load history.');
             return response.json();
         })
         .then(data => {
-            // В реальной системе фильтрация происходит на бэкенде
+            // В реальной системе фильтрация по ролям уже произошла на бэкенде
             renderHistoryTable(data);
         })
         .catch(error => {
-            showError('Error loading import history: ' + error.message);
-            tableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Ошибка: ${error.message}</td></tr>`;
+            if (error.message !== 'Unauthorized') {
+                 showError('Error loading import history: ' + error.message);
+                 tableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Ошибка: ${error.message}</td></tr>`;
+            }
         });
-    */
-
-    // Симуляция API-вызова и логики ролей
-    setTimeout(() => {
-        let filteredData = MOCK_IMPORT_HISTORY;
-
-        if (selectedRole === 'user') {
-            // Для обычного пользователя - фильтр по имени
-            filteredData = MOCK_IMPORT_HISTORY.filter(op => op.launchedByUsername === 'user');
-        }
-        // Для ADMIN - данные не фильтруются (видно все)
-
-        renderHistoryTable(filteredData);
-    }, 500);
 }
 
 function renderHistoryTable(data) {

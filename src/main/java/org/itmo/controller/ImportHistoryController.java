@@ -3,7 +3,6 @@ package org.itmo.controller;
 import org.itmo.dto.ImportHistoryResponseDto;
 import org.itmo.model.User;
 import org.itmo.service.ImportHistoryService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,26 +13,22 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/import-history")
-@RequiredArgsConstructor
 public class ImportHistoryController {
 
     private final ImportHistoryService historyService;
 
-    // ПРИМЕЧАНИЕ: Для правильной работы @AuthenticationPrincipal(User currentUser)
-    // требуется настроенный Spring Security и кастомный UserDetailsService,
-    // возвращающий объект User. Без этого, currentUser будет null или
-    // стандартный UserDetails.
+    public ImportHistoryController(ImportHistoryService historyService) {
+        this.historyService = historyService;
+    }
 
     @GetMapping
-    public ResponseEntity<List<ImportHistoryResponseDto>> getHistory(
-            @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<List<ImportHistoryResponseDto>> getHistory(@AuthenticationPrincipal User currentUser) {
 
-        if (currentUser == null) {
-            // Вернуть 401 Unauthorized, если пользователь не аутентифицирован
-            return ResponseEntity.status(401).build();
-        }
+        // Роль ADMIN определяется по имени роли
+        boolean isAdmin = currentUser != null && currentUser.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ADMIN"));
 
-        List<ImportHistoryResponseDto> history = historyService.getImportHistory(currentUser);
+        List<ImportHistoryResponseDto> history = historyService.getImportHistory(currentUser, isAdmin);
 
         return ResponseEntity.ok(history);
     }
