@@ -1,4 +1,5 @@
 .gradle
+code_contents.txt
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
