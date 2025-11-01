@@ -77,6 +77,7 @@ public class MusicBandService {
     }
 
     public MusicBandResponseDto create(@Valid MusicBandCreateDto dto) {
+        checkUniqueness(dto);
         MusicBand musicBand = musicBandMapper.toEntity(dto);
 
 
@@ -261,9 +262,9 @@ public class MusicBandService {
             throw new ValidationException(prefix + "Поле 'singlesCount' не может быть null и должно быть > 0.");
         }
 
-        // description: Поле не может быть null
+        // description: Поле не может быть null <-- ИЗМЕНЕНО: убрали пояснение в скобках
         if (dto.getDescription() == null) {
-            throw new ValidationException(prefix + "Поле 'description' не может быть null (в XML оно может быть пустым тегом, но не отсутствовать).");
+            throw new ValidationException(prefix + "Поле 'description' не может быть null.");
         }
 
         // albumsCount: Поле не может быть null, Значение поля должно быть больше 0 (в DTO это int)
@@ -298,7 +299,13 @@ public class MusicBandService {
             // Сначала проверяем *все* DTO на соответствие бизнес-правилам.
             // Если хотя бы один не пройдет, транзакция прервется до вставки.
             for (int i = 0; i < dtos.size(); i++) {
-                validateDtoForImport(dtos.get(i), i);
+                MusicBandCreateDto dto = dtos.get(i);
+
+                // Проверка DTO на NOT NULL и > 0
+                validateDtoForImport(dto, i);
+
+                // НОВАЯ ПРОВЕРКА УНИКАЛЬНОСТИ
+                checkUniqueness(dto);
             }
 
             // 3. СОЗДАНИЕ (Requirement 2)
@@ -320,6 +327,35 @@ public class MusicBandService {
             throw new RuntimeException("Ошибка импорта (транзакция будет отменена): " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException("Неизвестная ошибка (транзакция будет отменена): " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * НОВЫЙ МЕТОД:
+     * Проверяет, что не существует другой группы с таким же именем И жанром.
+     *
+     * ВНИМАНИЕ: Реализация является НЕЭФФЕКТИВНОЙ, так как использует существующий
+     * метод findByGenre() и выполняет фильтрацию в памяти (чтобы не менять интерфейс репозитория).
+     * @param dto DTO создаваемой группы.
+     */
+    private void checkUniqueness(MusicBandCreateDto dto) {
+        // Эти проверки должны пройти в validateDtoForImport, но проверяем на всякий случай
+        if (dto.getName() == null || dto.getGenre() == null) {
+            return;
+        }
+
+        // 1. Получаем все группы с таким же жанром
+        List<MusicBand> bandsOfSameGenre = musicBandRepository.findByGenre(dto.getGenre());
+
+        // 2. Проверяем, есть ли среди них группа с точно таким же именем
+        boolean exists = bandsOfSameGenre.stream()
+                .anyMatch(band -> band.getName().equalsIgnoreCase(dto.getName()));
+
+        if (exists) {
+            throw new ValidationException(
+                    "Нарушение уникальности: Группа с названием '" + dto.getName() +
+                            "' и жанром '" + dto.getGenre().name() + "' уже существует."
+            );
         }
     }
 }
