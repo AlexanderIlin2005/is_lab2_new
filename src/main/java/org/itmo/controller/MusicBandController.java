@@ -3,6 +3,7 @@ package org.itmo.controller;
 import jakarta.validation.Valid;
 import org.itmo.dto.MusicBandCreateDto;
 import org.itmo.dto.MusicBandResponseDto;
+import org.itmo.dto.ImportResultDto;
 import org.itmo.model.MusicGenre;
 import org.itmo.service.MusicBandService;
 import org.springframework.data.domain.Page;
@@ -114,16 +115,18 @@ public class MusicBandController {
         }
 
         try {
-            // Вызов нового метода сервиса
-            int importedCount = musicBandService.importBandsFromXml(file.getInputStream());
+            // ИЗМЕНЕНИЕ: Теперь получаем объект ImportResultDto вместо int
+            ImportResultDto resultDto = musicBandService.importBandsFromXml(file.getInputStream());
 
-            String message = importedCount > 0
-                    ? String.format("Успешно импортировано %d музыкальных групп(а) из XML.", importedCount)
-                    : "В XML-файле не найдено групп для импорта.";
-
-            return ResponseEntity.ok(Map.of("imported", importedCount, "message", message));
+            // Используем поля DTO для формирования ответа
+            return ResponseEntity.ok(Map.of(
+                    "imported", resultDto.getImported(),
+                    "message", resultDto.getMessage(),
+                    "success", resultDto.isSuccess()
+            ));
         } catch (RuntimeException e) {
-            // Ошибка парсинга или бизнес-логики
+            // Ошибка парсинга или бизнес-логики.
+            // Сообщение об ошибке уже должно быть отформатировано в MusicBandService.
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("imported", 0, "error", e.getMessage()));
         } catch (IOException e) {

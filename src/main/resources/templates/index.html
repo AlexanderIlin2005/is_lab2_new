@@ -75,6 +75,7 @@
             <li><a href="#studios-section" class="nav-link">Studios</a></li>
             <li><a href="#albums-section" class="nav-link">Albums</a></li> <li>
             <li><a href="#operations-section" class="nav-link">Special Operations</a></li>
+            <li><a href="#history-section" class="nav-link">Import History</a></li>
         </ul>
     </nav>
 
@@ -238,6 +239,34 @@
         </div>
     </div>
 
+    <div id="history-section" class="section">
+        <h2>Import History</h2>
+        <div id="historyControls" class="controls" style="justify-content: flex-start; gap: 20px;">
+            <label for="userRoleSimulator">Симуляция роли:</label>
+            <select id="userRoleSimulator" onchange="loadImportHistory()">
+                <option value="admin">ADMIN (Видит все)</option>
+                <option value="user">USER (Видит только свои)</option>
+            </select>
+            <button onclick="loadImportHistory()">Обновить историю</button>
+        </div>
+
+        <table id="importHistoryTable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Запустил</th>
+                <th>Время начала</th>
+                <th>Статус</th>
+                <th>Добавлено объектов</th>
+                <th>Детали ошибки</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr><td colspan="6">Нажмите "Обновить историю" для загрузки.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
 
 
 
@@ -352,6 +381,17 @@
 
         const XML_IMPORT_URL = `${API_URL}/import/xml`;
 
+        const IMPORT_HISTORY_API_URL = '/api/import-history';
+
+// ВНИМАНИЕ: Это заглушка данных для демонстрации.
+const MOCK_IMPORT_HISTORY = [
+    { id: 5, launchedByUsername: 'admin', startTime: '2025-11-01T09:00:00', status: 'SUCCESS', addedCount: 12, errorDetails: null },
+    { id: 4, launchedByUsername: 'user', startTime: '2025-10-31T15:45:00', status: 'SUCCESS', addedCount: 3, errorDetails: null },
+    { id: 3, launchedByUsername: 'admin', startTime: '2025-10-31T12:05:00', status: 'SUCCESS', addedCount: 1, errorDetails: null },
+    { id: 2, launchedByUsername: 'user', startTime: '2025-10-31T11:30:00', status: 'FAILED', addedCount: 0, errorDetails: 'Validation error: Unique name/genre violation.' },
+    { id: 1, launchedByUsername: 'admin', startTime: '2025-10-31T10:00:00', status: 'PENDING', addedCount: null, errorDetails: null },
+];
+
         function connectToWebSocket() {
 
         const socket = new SockJS('/ws');
@@ -423,6 +463,11 @@
     if (xmlImportForm) {
         xmlImportForm.addEventListener('submit', handleXmlImport);
     }
+
+    // Добавление обработчика для нового пункта меню
+    document.querySelector('a[href="#history-section"]').addEventListener('click', () => {
+        loadImportHistory();
+    });
 
     // 4. Инициализация WebSocket
     connectToWebSocket();
@@ -1314,6 +1359,76 @@ async function handleXmlImport(event) {
     } catch (error) {
         showError('❌ ' + error.message);
     }
+}
+
+
+function loadImportHistory() {
+    const tableBody = document.querySelector('#importHistoryTable tbody');
+    const selectedRole = document.getElementById('userRoleSimulator').value;
+
+    tableBody.innerHTML = '<tr><td colspan="6">Загрузка истории...</td></tr>';
+
+    // --- БЛОК ДЛЯ РЕАЛЬНОГО API ЗАПРОСА (РАСКОММЕНТИРОВАТЬ ПРИ ПОДКЛЮЧЕНИИ БЭКЕНДА) ---
+    /*
+    fetch(IMPORT_HISTORY_API_URL)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load history.');
+            return response.json();
+        })
+        .then(data => {
+            // В реальной системе фильтрация происходит на бэкенде
+            renderHistoryTable(data);
+        })
+        .catch(error => {
+            showError('Error loading import history: ' + error.message);
+            tableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Ошибка: ${error.message}</td></tr>`;
+        });
+    */
+
+    // Симуляция API-вызова и логики ролей
+    setTimeout(() => {
+        let filteredData = MOCK_IMPORT_HISTORY;
+
+        if (selectedRole === 'user') {
+            // Для обычного пользователя - фильтр по имени
+            filteredData = MOCK_IMPORT_HISTORY.filter(op => op.launchedByUsername === 'user');
+        }
+        // Для ADMIN - данные не фильтруются (видно все)
+
+        renderHistoryTable(filteredData);
+    }, 500);
+}
+
+function renderHistoryTable(data) {
+    const tableBody = document.querySelector('#importHistoryTable tbody');
+    tableBody.innerHTML = '';
+
+    if (data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6">История импорта не найдена.</td></tr>';
+        return;
+    }
+
+    data.forEach(item => {
+        const row = tableBody.insertRow();
+
+        let statusClass = 'info-message';
+        if (item.status === 'SUCCESS') statusClass = 'success-message';
+        if (item.status === 'FAILED') statusClass = 'error-message';
+
+        const addedCount = item.status === 'SUCCESS' ? item.addedCount : 'N/A';
+        const errorDetails = item.status === 'FAILED'
+            ? `<a href="#" class="text-danger" onclick="event.preventDefault(); alert('Error Details:\\n${item.errorDetails}');">Details</a>`
+            : '';
+
+        row.innerHTML = `
+            <td>${item.id}</td>
+            <td>${item.launchedByUsername}</td>
+            <td>${new Date(item.startTime).toLocaleString('ru-RU')}</td>
+            <td><span class="${statusClass}" style="padding: 5px 8px; border-radius: 3px; font-size: 0.9em; display: inline-block;">${item.status}</span></td>
+            <td>${addedCount}</td>
+            <td>${errorDetails}</td>
+        `;
+    });
 }
 
     </script>

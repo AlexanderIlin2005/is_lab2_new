@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import org.springframework.security.core.context.SecurityContextHolder; // НОВЫЙ ИМПОРТ
+
 import org.itmo.dto.MusicBandCreateDto;
 import java.io.InputStream;
 
@@ -26,8 +28,16 @@ import jakarta.xml.bind.JAXBException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.ZonedDateTime; // НОВЫЙ ИМПОРТ
 
 import jakarta.validation.ValidationException;
+
+// НОВЫЕ ИМПОРТЫ ДЛЯ ЛОГИРОВАНИЯ ИСТОРИИ
+import org.itmo.model.enums.ImportStatus;
+import org.itmo.repository.ImportHistoryRepository;
+import org.itmo.repository.UserRepository;
+
+
 
 @Service
 @Transactional
@@ -39,13 +49,19 @@ public class MusicBandService {
     //private final MusicBandEventsPublisher eventsPublisher;
     private final MusicBandMapper musicBandMapper;
     private final SimpMessagingTemplate messagingTemplate;
+    // НОВЫЕ ПОЛЯ
+    private final ImportHistoryRepository historyRepository;
+    private final UserRepository userRepository; // Нужно для загрузки пользователя в случае отсутствия Security
 
     public MusicBandService(MusicBandRepository musicBandRepository,
                             AlbumRepository albumRepository,
                             CoordinatesRepository coordinatesRepository,
                             StudioRepository studioRepository,
                             MusicBandMapper musicBandMapper,
-                            SimpMessagingTemplate messagingTemplate) {
+                            SimpMessagingTemplate messagingTemplate,
+                            // НОВЫЕ АРГУМЕНТЫ КОНСТРУКТОРА
+                            ImportHistoryRepository historyRepository,
+                            UserRepository userRepository) {
         this.musicBandRepository = musicBandRepository;
         this.albumRepository = albumRepository;
         this.coordinatesRepository = coordinatesRepository;
@@ -53,6 +69,10 @@ public class MusicBandService {
         //this.eventsPublisher = eventsPublisher;
         this.musicBandMapper = musicBandMapper;
         this.messagingTemplate = messagingTemplate;
+
+        // ИНИЦИАЛИЗАЦИЯ НОВЫХ ПОЛЕЙ
+        this.historyRepository = historyRepository;
+        this.userRepository = userRepository;
     }
 
 
@@ -247,49 +267,31 @@ public class MusicBandService {
         return musicBand.getNumberOfParticipants();
     }
 
-    /**
-     * НОВЫЙ МЕТОД:
-     * Ручная валидация DTO из XML на соответствие новым бизнес-правилам.
-     */
+    // ВАШ МЕТОД validateDtoForImport (без изменений)
     private void validateDtoForImport(MusicBandCreateDto dto, int index) {
         String prefix = "Группа #" + (index + 1) + " (" + (dto.getName() != null ? dto.getName() : "N/A") + "): ";
 
-        // name: Поле не может быть null, Строка не может быть пустой
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new ValidationException(prefix + "Поле 'name' не может быть null или пустым.");
         }
-
-        // coordinates: Поле не может быть null
         if (dto.getCoordinates() == null) {
             throw new ValidationException(prefix + "Поле 'coordinates' не может быть null.");
         }
-
-        // genre: Поле не может быть null
         if (dto.getGenre() == null) {
             throw new ValidationException(prefix + "Поле 'genre' не может быть null.");
         }
-
-        // numberOfParticipants: Значение поля должно быть больше 0
         if (dto.getNumberOfParticipants() <= 0) {
             throw new ValidationException(prefix + "Поле 'numberOfParticipants' должно быть > 0.");
         }
-
-        // singlesCount: Значение поля должно быть больше 0 (в DTO это Long)
         if (dto.getSingleCount() == null || dto.getSingleCount() <= 0) {
             throw new ValidationException(prefix + "Поле 'singlesCount' не может быть null и должно быть > 0.");
         }
-
-        // description: Поле не может быть null <-- ИЗМЕНЕНО: убрали пояснение в скобках
         if (dto.getDescription() == null) {
             throw new ValidationException(prefix + "Поле 'description' не может быть null.");
         }
-
-        // albumsCount: Поле не может быть null, Значение поля должно быть больше 0 (в DTO это int)
         if (dto.getAlbumCount() <= 0) {
             throw new ValidationException(prefix + "Поле 'albumCount' должно быть > 0.");
         }
-
-        // establishmentDate: Поле не может быть null
         if (dto.getEstablishmentDate() == null) {
             throw new ValidationException(prefix + "Поле 'establishmentDate' не может быть null.");
         }
@@ -297,79 +299,116 @@ public class MusicBandService {
 
 
     /**
-     * ИЗМЕНЕННЫЙ МЕТОД ИМПОРТА
+     * ИЗМЕНЕННЫЙ МЕТОД ИМПОРТА С ЛОГИРОВАНИЕМ ИСТОРИИ
      */
     @Transactional
-    public int importBandsFromXml(InputStream xmlData) {
+    public ImportResultDto importBandsFromXml(InputStream xmlData) {
+
+        // --- 1. Определение текущего пользователя ---
+        User currentUser = getCurrentAuthenticatedUser();
+        ImportHistory history = null;
+
+        if (currentUser != null) {
+            history = new ImportHistory(currentUser);
+            history = historyRepository.save(history); // Сохраняем PENDING
+        }
+
+        int importedCount = 0;
+
         try {
-            // 1. Парсинг XML
+            // 2. Парсинг XML
             JAXBContext jaxbContext = JAXBContext.newInstance(MusicBandListWrapper.class, MusicBandCreateDto.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
             MusicBandListWrapper wrapper = (MusicBandListWrapper) unmarshaller.unmarshal(xmlData);
             List<MusicBandCreateDto> dtos = wrapper.getMusicBands();
 
             if (dtos == null || dtos.isEmpty()) {
-                return 0;
+                if (history != null) {
+                    history.setStatus(ImportStatus.SUCCESS);
+                    history.setAddedCount(0);
+                    history.setEndTime(ZonedDateTime.now());
+                    historyRepository.save(history);
+                }
+                return new ImportResultDto(0, "XML-файл не содержит групп для импорта.", true);
             }
 
-            // 2. ВАЛИДАЦИЯ (Requirement 1)
-            // Сначала проверяем *все* DTO на соответствие бизнес-правилам.
-            // Если хотя бы один не пройдет, транзакция прервется до вставки.
+            // 3. ВАЛИДАЦИЯ и ПРОВЕРКА УНИКАЛЬНОСТИ
             for (int i = 0; i < dtos.size(); i++) {
                 MusicBandCreateDto dto = dtos.get(i);
-
-                // Проверка DTO на NOT NULL и > 0
                 validateDtoForImport(dto, i);
-
-                // НОВАЯ ПРОВЕРКА УНИКАЛЬНОСТИ
-                checkUniqueness(dto, null); // Импорт: ID для исключения = null
+                checkUniqueness(dto, null);
             }
 
-            // 3. СОЗДАНИЕ (Requirement 2)
-            // Все DTO валидны, теперь создаем их.
-            // Метод create() выполнит проверки (например, "Studio not found")
-            // Если он упадет, @Transactional откатит все предыдущие.
-            int count = 0;
+            // 4. СОЗДАНИЕ
             for (MusicBandCreateDto dto : dtos) {
                 this.create(dto); // Используем существующий метод create
-                count++;
+                importedCount++;
             }
 
             notifyClients("BAND_BULK_IMPORTED");
-            return count;
+
+            // --- 5. ЛОГИРОВАНИЕ УСПЕХА (SUCCESS) ---
+            if (history != null) {
+                history.setStatus(ImportStatus.SUCCESS);
+                history.setAddedCount(importedCount);
+                history.setEndTime(ZonedDateTime.now());
+                historyRepository.save(history);
+            }
+
+            return new ImportResultDto(importedCount, "Импорт завершен успешно.", true);
 
         } catch (JAXBException e) {
+            handleImportError(history, "Ошибка парсинга XML: " + e.getMessage(), e);
             throw new RuntimeException("Ошибка парсинга XML: " + e.getMessage(), e);
-        } catch (ValidationException | EntityNotFoundException e) { // Ловим ошибки валидации или create()
+        } catch (ValidationException | EntityNotFoundException e) {
+            handleImportError(history, "Ошибка импорта (транзакция будет отменена): " + e.getMessage(), e);
             throw new RuntimeException("Ошибка импорта (транзакция будет отменена): " + e.getMessage(), e);
         } catch (Exception e) {
+            handleImportError(history, "Неизвестная ошибка (транзакция будет отменена): " + e.getMessage(), e);
             throw new RuntimeException("Неизвестная ошибка (транзакция будет отменена): " + e.getMessage(), e);
         }
     }
 
     /**
-     * НОВЫЙ МЕТОД:
-     * Проверяет, что не существует другой группы с таким же именем И жанром,
-     * исключая группу с bandIdToExclude.
-     *
-     * ВНИМАНИЕ: Реализация является НЕЭФФЕКТИВНОЙ, так как использует существующий
-     * метод findByGenre() и выполняет фильтрацию в памяти (чтобы не менять интерфейс репозитория).
-     * @param dto DTO создаваемой/обновляемой группы.
-     * @param bandIdToExclude ID группы, которую нужно исключить из проверки (null при создании).
+     * Вспомогательный метод для получения текущего пользователя из контекста безопасности.
      */
+    private User getCurrentAuthenticatedUser() {
+        // Если Spring Security настроен и объект User имплементирует UserDetails
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof User) {
+            return (User) principal;
+        }
+
+        // ВАЖНО: Если аутентификация не настроена, возвращаем null.
+        // В реальном приложении здесь должна быть ошибка аутентификации.
+        return null;
+    }
+
+    /**
+     * Вспомогательный метод для логирования ошибки.
+     */
+    private void handleImportError(ImportHistory history, String message, Exception e) {
+        if (history != null) {
+            history.setStatus(ImportStatus.FAILED);
+            String errorMsg = e.getMessage() != null ? e.getMessage() : message;
+            // Ограничиваем сообщение
+            history.setErrorDetails(errorMsg.length() > 4096 ? errorMsg.substring(0, 4096) : errorMsg);
+            history.setEndTime(ZonedDateTime.now());
+            historyRepository.save(history);
+        }
+        // Логирование в консоль для дебага
+        System.err.println(message + " Details: " + e.toString());
+    }
+
+    // ВАШ МЕТОД checkUniqueness (без изменений)
     private void checkUniqueness(MusicBandCreateDto dto, Long bandIdToExclude) {
-        // Эти проверки должны пройти в validateDtoForImport, но проверяем на всякий случай
         if (dto.getName() == null || dto.getGenre() == null) {
             return;
         }
 
-        // 1. Получаем все группы с таким же жанром
         List<MusicBand> bandsOfSameGenre = musicBandRepository.findByGenre(dto.getGenre());
 
-        // 2. Проверяем, есть ли среди них группа с точно таким же именем,
-        //    исключая группу с ID, которую мы обновляем.
         boolean exists = bandsOfSameGenre.stream()
-                // Исключаем текущую группу при обновлении:
                 .filter(band -> bandIdToExclude == null || !band.getId().equals(bandIdToExclude))
                 .anyMatch(band -> dto.getName().equalsIgnoreCase(band.getName()));
 
