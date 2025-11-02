@@ -11,6 +11,9 @@
         <class>org.itmo.model.Album</class>
         <class>org.itmo.model.Studio</class>
         <class>org.itmo.model.MusicGenre</class>
+        <class>org.itmo.model.ImportHistory</class>
+        <class>org.itmo.model.User</class>
+        <class>org.itmo.config.UserRoleConverter</class>
 
         <!-- Настройки подключения к базе данных -->
         <properties>
