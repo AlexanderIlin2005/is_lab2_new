@@ -1,17 +1,18 @@
 package org.itmo;
 
-import org.eclipse.jetty.servlet.ServletContextHandler;
+// ВАЖНЫЕ ИМПОРТЫ
+import org.eclipse.jetty.webapp.WebAppContext; // <-- НОВЫЙ ИМПОРТ
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.springframework.web.servlet.DispatcherServlet;
-import org.eclipse.jetty.server.Server;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
-import org.itmo.config.WebConfig;
 
-import jakarta.servlet.MultipartConfigElement; // <-- НОВЫЙ ИМПОРТ ДЛЯ MULTIPART
-import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer; // <-- НОВЫЙ ИМПОРТ ДЛЯ WEBSOCKET
+import jakarta.servlet.MultipartConfigElement;
+import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServletContainerInitializer;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.URL; // <-- НОВЫЙ ИМПОРТ
 
 public class Main {
     private static final int START_PORT = 8080;
@@ -26,31 +27,54 @@ public class Main {
         System.out.println("Starting server on port: " + port);
 
         Server server = new Server(port);
-        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+
+        // **********************************************
+        // !!! КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: ИСПОЛЬЗУЕМ WebAppContext !!!
+        // **********************************************
+        WebAppContext context = new WebAppContext();
         context.setContextPath("/");
 
-        // 1. РЕШЕНИЕ ПРОБЛЕМЫ WEBSOCKET (JSR-356)
-        // Инициализация WebSocket-контейнера для Jetty 11 с Jakarta API.
-        JakartaWebSocketServletContainerInitializer.configure(context, (servletContext, container) -> {
-            // Конфигурация по умолчанию для ServerContainer
+        // Указываем, что ресурсная база — это наш JAR-файл
+        URL resourceUrl = Main.class.getClassLoader().getResource("/");
+        if (resourceUrl != null) {
+            context.setResourceBase(resourceUrl.toURI().toString());
+        } else {
+            // Fallback, если запускается не из JAR
+            context.setResourceBase("./src/main/webapp");
+        }
+
+        // CRITICAL: Указываем, что нужно сканировать аннотации и инициализаторы
+        context.setParentLoaderPriority(true);
+
+        // !!! КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: ОТКЛЮЧАЕМ СТАНДАРТНЫЙ WEB.XML !!!
+        // Это предотвратит автоматическую загрузку IntrospectorCleaner, которого нет
+        context.setDefaultsDescriptor(null);
+
+        // ИСПОЛЬЗУЕМ ТОЛЬКО МИНИМАЛЬНЫЕ КОНФИГУРАТОРЫ
+        context.setConfigurationClasses(new String[]{
+                // Нужен для поиска ServletContainerInitializer (AppInitializer)
+                "org.eclipse.jetty.annotations.AnnotationConfiguration",
+                // Этого достаточно, если нет web.xml
         });
+
+        // 1. РЕШЕНИЕ ПРОБЛЕМЫ WEBSOCKET (JSR-356) - теперь WebAppContext сам справится
+        // JakartaWebSocketServletContainerInitializer.configure(context, ...);
+        // Если вы оставляете это, убедитесь, что context.setAttribute() не перекрывает WebAppContext
 
         server.setHandler(context);
 
+        // Spring Web Context (WebConfig)
+        AnnotationConfigWebApplicationContext webCtx = new AnnotationConfigWebApplicationContext();
+        webCtx.register(org.itmo.config.WebConfig.class);
 
-        AnnotationConfigWebApplicationContext ctx = new AnnotationConfigWebApplicationContext();
-        ctx.register(WebConfig.class);
-
-        DispatcherServlet dispatcherServlet = new DispatcherServlet(ctx);
-        ServletHolder springServletHolder = new ServletHolder(dispatcherServlet); // <-- Используем ServletHolder
+        DispatcherServlet dispatcherServlet = new DispatcherServlet(webCtx);
+        ServletHolder springServletHolder = new ServletHolder(dispatcherServlet);
 
         // 2. РЕШЕНИЕ ПРОБЛЕМЫ MULTIPART (ЗАГРУЗКА ФАЙЛОВ)
-        // Для обработки MultipartFile (MultipartException: Failed to parse multipart)
-        // Устанавливаем конфигурацию MultipartConfigElement для DispatcherServlet.
-        // 'null' означает использование временной директории по умолчанию.
         MultipartConfigElement multipartConfig = new MultipartConfigElement((String) null);
         springServletHolder.getRegistration().setMultipartConfig(multipartConfig);
 
+        // ДОБАВЛЯЕМ DispatcherServlet в WebAppContext
         context.addServlet(springServletHolder, "/*");
 
         server.start();

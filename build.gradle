@@ -19,6 +19,17 @@ jar {
     }
 }
 
+tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass,
+                'Web-App-Runner-Class': application.mainClass,
+                'Class-Path': '.',
+                'Scan-Classpaths': 'true'
+        )
+    }
+}
+
 
 group 'ru.itmo.studs'
 version '2.0-SNAPSHOT'
@@ -103,6 +114,10 @@ dependencies {
     // Зависимости для WEBSOCKET И JAKARTA (Jetty 11)
     implementation 'org.eclipse.jetty.websocket:websocket-jakarta-server:11.0.24'
     implementation 'org.eclipse.jetty.websocket:websocket-jakarta-client:11.0.24'
+
+    implementation 'org.eclipse.jetty:jetty-annotations:11.0.24'
+    implementation 'org.eclipse.jetty:jetty-plus:11.0.24'
+    implementation 'org.eclipse.jetty:jetty-util:11.0.24'
 
 }
 
