@@ -1,59 +1,84 @@
 package org.itmo.config;
 
-import org.itmo.service.UserService; // ОК, теперь UserService существует
+import org.itmo.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+// Удален импорт AuthenticationManager, т.к. мы его больше не определяем
+// Удален импорт AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint; // Оставляем
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import org.springframework.transaction.annotation.EnableTransactionManagement; // <--- НОВЫЙ ИМПОРТ
+import org.springframework.web.cors.CorsConfiguration; // <-- НОВЫЙ ИМПОРТ
+import org.springframework.web.cors.CorsConfigurationSource; // <-- НОВЫЙ ИМПОРТ
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource; // <-- НОВЫЙ ИМПОРТ
+import java.util.Arrays; // <-- НОВЫЙ ИМПОРТ
+import java.util.List; // <-- НОВЫЙ ИМПОРТ
 
 @Configuration
 @EnableWebSecurity
-@EnableTransactionManagement(proxyTargetClass = true) // <--- ИСПРАВЛЕНИЕ: Включаем CGLIB проксирование
+@EnableTransactionManagement(proxyTargetClass = true)
 public class SecurityConfig {
 
-    private final UserService userService; // ОК, теперь UserService существует
+    @Autowired
+    private UserService userService;
 
-    public SecurityConfig(UserService userService) { // ОК, теперь UserService существует
-        this.userService = userService;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    // !!! AuthenticationManager удален, что правильно. !!!
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder =
-                http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder
-                .userDetailsService(userService) // Используем ваш UserService для загрузки данных пользователя
-                .passwordEncoder(passwordEncoder());
-        return authenticationManagerBuilder.build();
+    public BasicAuthenticationEntryPoint authenticationEntryPoint() {
+        BasicAuthenticationEntryPoint entryPoint = new BasicAuthenticationEntryPoint();
+        entryPoint.setRealmName("My Realm");
+        return entryPoint;
+    }
+
+    // !!! ШАГ 1: НОВЫЙ БИН ДЛЯ CORS (ОБЯЗАТЕЛЬНО ДЛЯ REST API) !!!
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Разрешаем все методы, заголовки и источники (для простоты)
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true); // Важно для Basic Auth
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Отключаем CSRF, так как это REST API
+                // !!! ШАГ 2: ПРИМЕНЯЕМ CORS ВНУТРИ SECURITY !!!
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // Отключаем CSRF
                 .csrf(AbstractHttpConfigurer::disable)
-                // Используем Basic Auth (логин/пароль)
+
+                // !!! ИЗМЕНЕНИЕ: Включаем Basic Auth Filter, но без настройки EntryPoint здесь !!!
                 .httpBasic(httpBasic -> {})
-                // Сессия Stateless (без сохранения состояния на сервере)
+
+                // !!! КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: ЯВНО НАЗНАЧАЕМ ENTRYPOINT
+                // ДЛЯ НЕАУТЕНТИФИЦИРОВАННЫХ ЗАПРОСОВ В БЛОКЕ EXCEPTION HANDLING
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                )
+
+                // Сессия Stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Настройка правил авторизации (с использованием .hasAuthority, т.к. UserDetails возвращает роли как GrantedAuthority)
+
+                // Настройка правил авторизации
                 .authorizeHttpRequests(auth -> auth
-                        // Разрешаем доступ к статическим ресурсам и WebSocket
+                        // 1. РАЗРЕШАЕМ ВСЕ OPTIONS (Preflight)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Разрешаем доступ к статическим ресурсам и WebSocket
                         .requestMatchers("/", "/index.html", "/ws/**").permitAll()
 
                         // Music Bands: чтение всем, остальные операции - аутентифицированным

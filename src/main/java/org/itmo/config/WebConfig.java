@@ -13,6 +13,14 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
 
+// ДОБАВИТЬ НОВЫЕ ИМПОРТЫ
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+
+import java.util.List; // ВАЖНО: убедитесь, что List импортирован
+
 @Configuration
 @EnableWebMvc
 @ComponentScan("org.itmo")
@@ -52,6 +60,28 @@ public class WebConfig implements WebMvcConfigurer {
         registry.viewResolver(resolver);
     }
 
+    /**
+     * !!! ЗАМЕНА !!! Переопределяем ВСЕ конвертеры и добавляем только наш Jackson.
+     * Это гарантирует, что Jackson получит приоритет и будет использован.
+     */
+    @Override
+    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+        // Создаем ObjectMapper и регистрируем модуль для ZonedDateTime (важно!)
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        // Это опционально, но полезно для корректной работы с модулями
+        objectMapper.findAndRegisterModules();
+
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(objectMapper);
+
+        // Очищаем и добавляем только наш конвертер, чтобы избежать конфликтов
+        converters.clear(); // <-- Важно! Очищаем список.
+        converters.add(converter);
+    }
+
+    /*
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
@@ -60,4 +90,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true);
     }
+     */
 }

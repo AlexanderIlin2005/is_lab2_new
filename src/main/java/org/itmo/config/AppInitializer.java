@@ -8,7 +8,11 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
     @Override
     protected Class<?>[] getRootConfigClasses() {
-        return new Class[]{AppConfig.class};
+        return new Class[]{
+                AppConfig.class,
+                SecurityConfig.class,       // <-- ФИКС: Явная регистрация Security
+                PasswordEncoderConfig.class // <-- ФИКС: Явная регистрация Encoder
+        };
     }
 
     @Override
@@ -21,4 +25,6 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
     protected String[] getServletMappings() {
         return new String[]{"/"};
     }
+
+    // !!! НЕТ МЕТОДА onStartup(ServletContext) ЗДЕСЬ !!!
 }

@@ -8,52 +8,44 @@ import org.springframework.beans.factory.InitializingBean; // НОВЫЙ ИМП�
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional; // Важно для создания пользователей
+import org.itmo.repository.UserRepository; // <-- ДОБАВЬТЕ ЭТОТ ИМПОРТ ИЛИ @Autowired
 
 /**
  * Инициализатор данных: добавляет тестовых пользователей в БД при старте,
  * используя стандартный интерфейс Spring'а InitializingBean.
  */
+import org.itmo.repository.UserRepository; // <-- ДОБАВЬТЕ ЭТОТ ИМПОРТ ИЛИ @Autowired
+
 @Component
 @RequiredArgsConstructor
-public class DataInitializer implements InitializingBean { // ИМПЛЕМЕНТИРУЕМ InitializingBean
+public class DataInitializer implements InitializingBean {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository; // <-- ДОБАВИТЬ ЭТО ПОЛЕ
 
-    /**
-     * Этот метод будет выполнен Spring-контейнером после инициализации всех свойств бина.
-     */
     @Override
     @Transactional
     public void afterPropertiesSet() throws Exception {
 
-        // ВАЖНО: loadUserByUsername выбросит исключение, если пользователь не найден.
-        // Чтобы избежать этого, используем try-catch.
+        userRepository.deleteAll();
 
-        // 1. Создание тестового пользователя ADMIN (admin/adminpass)
-        try {
-            userService.loadUserByUsername("admin");
-        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
-            User admin = new User();
-            admin.setUsername("admin");
-            // Пароль: 'adminpass'
-            admin.setPasswordHash(passwordEncoder.encode("adminpass"));
-            admin.setRole(UserRole.ADMIN);
-            userService.save(admin);
-            System.out.println("-> Created initial ADMIN user: admin/adminpass");
-        }
+        // 2. Создание тестового пользователя ADMIN (admin/adminpass)
+        User admin = new User();
+        admin.setUsername("admin");
+        // !!! ВОЗВРАЩАЕМ ХЕШИРОВАНИЕ !!!
+        admin.setPasswordHash(passwordEncoder.encode("adminpass"));
+        admin.setRole(UserRole.ADMIN);
+        userService.save(admin);
+        System.out.println("-> RESET: Created initial ADMIN user: admin/adminpass"); // Удалить (NoOp)
 
-        // 2. Создание тестового пользователя USER (user/userpass)
-        try {
-            userService.loadUserByUsername("user");
-        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
-            User user = new User();
-            user.setUsername("user");
-            // Пароль: 'userpass'
-            user.setPasswordHash(passwordEncoder.encode("userpass"));
-            user.setRole(UserRole.USER);
-            userService.save(user);
-            System.out.println("-> Created initial USER: user/userpass");
-        }
+        // 3. Создание тестового пользователя USER (user/userpass)
+        User user = new User();
+        user.setUsername("user");
+        // !!! ВОЗВРАЩАЕМ ХЕШИРОВАНИЕ !!!
+        user.setPasswordHash(passwordEncoder.encode("userpass"));
+        user.setRole(UserRole.USER);
+        userService.save(user);
+        System.out.println("-> RESET: Created initial USER: user/userpass"); // Удалить (NoOp)
     }
 }
