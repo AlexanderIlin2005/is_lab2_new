@@ -27,8 +27,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 // НОВЫЙ ИМПОРТ
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 
+// НОВЫЙ ИМПОРТ
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
+
 @Configuration
 @EnableWebMvc
+@EnableSpringDataWebSupport // <-- ДОБАВИТЬ ЭТУ АННОТАЦИЮ
 @ComponentScan("org.itmo")
 public class WebConfig implements WebMvcConfigurer {
 
