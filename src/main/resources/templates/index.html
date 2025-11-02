@@ -900,64 +900,109 @@
                 });
         }
 
-        function handleFormSubmit(event) {
-            event.preventDefault();
-            clearFormErrors();
+        function validateForm() {
+            let isValid = true;
+            const requiredFields = ['name', 'numberOfParticipants', 'albumCount', 'establishmentDate', 'coordinatesX', 'coordinatesY'];
 
-            const bandId = document.getElementById('bandId').value;
-            const isUpdate = !!bandId;
-            const method = isUpdate ? 'PATCH' : 'POST';
-            const url = isUpdate ? `${API_URL}/${bandId}` : API_URL;
-
-            // Преобразование даты в Unix timestamp (секунды)
-            const dateInput = document.getElementById('establishmentDate').value;
-            const establishmentDate = dateInput ? Math.floor(new Date(dateInput).getTime() / 1000) : null;
-
-
-            const formData = {
-                name: document.getElementById('name').value,
-                genre: document.getElementById('genre').value,
-                numberOfParticipants: parseInt(document.getElementById('numberOfParticipants').value),
-                singleCount: parseInt(document.getElementById('singleCount').value) || 0,
-                description: document.getElementById('description').value || null,
-                albumCount: parseInt(document.getElementById('albumCount').value),
-                establishmentDate: establishmentDate,
-                coordinates: {
-                    x: parseFloat(document.getElementById('coordinatesX').value),
-                    y: parseInt(document.getElementById('coordinatesY').value)
-                },
-                bestAlbumId: document.getElementById('bestAlbumId').value ? parseInt(document.getElementById('bestAlbumId').value) : null,
-                studioName: document.getElementById('studioId').options[document.getElementById('studioId').selectedIndex].textContent
-            };
-
-            // Удаляем studioName, если выбрано "No Studio"
-            if (document.getElementById('studioId').value === '') {
-                formData.studioName = null;
-            }
-
-            fetch(url, {
-                method: method,
-                headers: getAuthHeaders(),
-                body: JSON.stringify(formData)
-            })
-            .then(async response => {
-                if (!response.ok) {
-                    let errorData = await response.json().catch(() => ({}));
-                    if (errorData.errors && errorData.errors.length > 0) {
-                        errorData.errors.forEach(err => showFieldError(err.fieldName, err.message));
-                        throw new Error("Validation failed. Check fields.");
-                    }
-                    throw new Error(`Submission failed. Status: ${response.status} ${response.statusText}`);
+            requiredFields.forEach(field => {
+                const element = document.getElementById(field);
+                if (!element.value.trim()) {
+                    showFieldError(field, 'This field is required');
+                    isValid = false;
                 }
-                return response.json();
-            })
-            .then(() => {
-                showSuccess(`Band ${isUpdate ? 'updated' : 'created'} successfully!`);
-                closeModal();
-                loadBands();
-            })
-            .catch(error => showError(error.message));
+            });
+
+            return isValid;
         }
+
+        function handleFormSubmit(event) {
+        event.preventDefault();
+
+        clearFormErrors();
+
+        if (!validateForm()) {
+            showError('Please fill all required fields correctly.');
+            return;
+        }
+
+        const bandId = document.getElementById('bandId').value;
+        const method = bandId ? 'PATCH' : 'POST';
+        const url = bandId ? `${API_URL}/${bandId}` : API_URL;
+
+
+        const establishmentDate = new Date(document.getElementById('establishmentDate').value).toISOString();
+
+        const studioId = document.getElementById('studioId').value;
+
+
+        let studioPayload = null;
+        if (studioId !== "") {
+
+            studioPayload = { id: parseInt(studioId) };
+        } else {
+
+            studioPayload = { id: null };
+        }
+
+
+        const formData = {
+            name: document.getElementById('name').value,
+            genre: document.getElementById('genre').value,
+            numberOfParticipants: parseInt(document.getElementById('numberOfParticipants').value),
+            singleCount: document.getElementById('singleCount').value ? parseInt(document.getElementById('singleCount').value) : null,
+            description: document.getElementById('description').value || null,
+            albumCount: parseInt(document.getElementById('albumCount').value),
+            establishmentDate: establishmentDate,
+            coordinates: {
+                x: parseFloat(document.getElementById('coordinatesX').value),
+                y: parseInt(document.getElementById('coordinatesY').value)
+            },
+            bestAlbum: document.getElementById('bestAlbumId').value ? { id: parseInt(document.getElementById('bestAlbumId').value) } : null,
+
+
+            studio: studioPayload,
+        };
+
+        console.log('Sending form data:', JSON.stringify(formData, null, 2));
+
+        fetch(url, {
+            method: method,
+            headers: getAuthHeaders(),
+            body: JSON.stringify(formData)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.log('Error response:', text);
+                    throw new Error(text || 'Submission failed!');
+                });
+            }
+            return response.json();
+        })
+        .then((data) => {
+            console.log('Success response:', data);
+            showSuccess(`Band ${bandId ? 'updated' : 'created'} successfully!`);
+            closeModal();
+            loadBands();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            try {
+                const errorData = JSON.parse(error.message);
+                if (errorData.errors) {
+                    errorData.errors.forEach(err => {
+                        showFieldError(err.field, err.defaultMessage);
+                    });
+                    showError('Please correct the validation errors above.');
+                } else {
+                    showError('Error: ' + error.message);
+                }
+            } catch (e) {
+                showError('Error: ' + error.message);
+            }
+        });
+    }
 
         function deleteBand(id) {
             if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
