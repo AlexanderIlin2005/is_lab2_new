@@ -24,6 +24,14 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 // !!!
 
+// ... (другие импорты)
+//import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
+//import org.springframework.security.web.servlet.request.MvcRequestMatcher;
+//import org.springframework.security.web.util.matcher.RequestMatcher;
+// ...
+
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher; // <-- НОВЫЙ ИМПОРТ
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -76,16 +84,15 @@ public class SecurityConfig {
     }
 
 
+    // !!! ВАЖНО: УДАЛЕН АРГУМЕНТ HandlerMappingIntrospector, как и в прошлый раз !!!
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // !!! 3. ОТКЛЮЧАЕМ АВТОМАТИЧЕСКИЙ BASIC И ВНЕДРЯЕМ НАШ ФИЛЬТР
                 .httpBasic(AbstractHttpConfigurer::disable)
-                // !!! ИСПРАВЛЕНИЕ: Используем addFilterAt для принудительного размещения !!!
-                .addFilterAt(basicAuthenticationFilter(http), BasicAuthenticationFilter.class)
+                .addFilterAt(basicAuthenticationFilter(http), org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class)
 
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(authenticationEntryPoint())
@@ -93,17 +100,44 @@ public class SecurityConfig {
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Настройки авторизации (остаются без изменений)
+                // Настройки авторизации: ИСПОЛЬЗУЕМ ЯВНЫЙ AntPathRequestMatcher
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/index.html", "/ws/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/music-bands/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/music-bands").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/music-bands/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/music-bands/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/music-bands/import/xml").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/import-history").authenticated()
-                        .requestMatchers("/api/studios/**", "/api/albums/**").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        // OPTIONS
+                        .requestMatchers(new AntPathRequestMatcher("/**", HttpMethod.OPTIONS.name())).permitAll()
+
+                        // Static and WS
+                        .requestMatchers(
+                                new AntPathRequestMatcher("/"),
+                                new AntPathRequestMatcher("/index.html"),
+                                new AntPathRequestMatcher("/ws/**")
+                        ).permitAll()
+
+                        // Music Bands: GET (Read)
+                        .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.GET.name())).permitAll()
+
+                        // Music Bands: POST
+                        .requestMatchers(new AntPathRequestMatcher("/api/music-bands", HttpMethod.POST.name())).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // Music Bands: PATCH
+                        .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.PATCH.name())).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // Music Bands: DELETE
+                        .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.DELETE.name())).hasAuthority("ROLE_ADMIN")
+
+                        // Import XML
+                        .requestMatchers(new AntPathRequestMatcher("/api/music-bands/import/xml", HttpMethod.POST.name())).hasAuthority("ROLE_ADMIN")
+
+                        // Import History (Authenticated)
+                        .requestMatchers(new AntPathRequestMatcher("/api/import-history", HttpMethod.GET.name())).authenticated()
+
+                        // Studios & Albums (User/Admin)
+                        // Примечание: для RequestMatchers без HttpMethod по умолчанию используется любой метод (ALL)
+                        .requestMatchers(
+                                new AntPathRequestMatcher("/api/studios/**"),
+                                new AntPathRequestMatcher("/api/albums/**")
+                        ).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // Fallback: All other requests
                         .anyRequest().authenticated()
                 );
 
