@@ -39,6 +39,7 @@ public class MusicBandController {
         this.musicBandService = musicBandService;
     }
 
+    /*
     @GetMapping
     public Page<MusicBandResponseDto> list(@RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size,
@@ -51,6 +52,14 @@ public class MusicBandController {
             sortSpec = Sort.by(dir, sort);
         }
         Pageable pageable = PageRequest.of(page, size, sortSpec);
+        return musicBandService.list(nameEquals, pageable);
+    }
+
+     */
+
+    @GetMapping
+    public Page<MusicBandResponseDto> list(Pageable pageable,
+                                           @RequestParam(required = false) String nameEquals) {
         return musicBandService.list(nameEquals, pageable);
     }
 

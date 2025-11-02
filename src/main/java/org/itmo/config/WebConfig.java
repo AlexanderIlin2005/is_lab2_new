@@ -24,6 +24,9 @@ import java.util.List; // ВАЖНО: убедитесь, что List импор
 // ДОБАВИТЬ НОВЫЕ ИМПОРТЫ
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+// НОВЫЙ ИМПОРТ
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
+
 @Configuration
 @EnableWebMvc
 @ComponentScan("org.itmo")
@@ -64,6 +67,21 @@ public class WebConfig implements WebMvcConfigurer {
         resolver.setTemplateEngine(templateEngine());
         resolver.setCharacterEncoding("UTF-8");
         registry.viewResolver(resolver);
+    }
+
+    /**
+     * !!! ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Отключаем поиск файлов по суффиксу. !!!
+     * Это гарантирует, что запросы /api/** не будут перехвачены Thymeleaf,
+     * который ошибочно ищет шаблон, а будут обрабатываться RestController'ом.
+     */
+    @Override
+    public void configurePathMatch(PathMatchConfigurer configurer) {
+        // Отключаем поиск шаблонов по суффиксу (например, .xml, .json),
+        // что предотвращает конфликт с ViewResolver.
+        configurer.setUseSuffixPatternMatch(false);
+
+        // Также полезно отключить совпадение с конечным слешем для чистоты API
+        configurer.setUseTrailingSlashMatch(false);
     }
 
     /**
