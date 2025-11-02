@@ -37,22 +37,20 @@ public class UserService implements UserDetailsService {
                     return new UsernameNotFoundException("User not found with username: " + username);
                 });
 
-        // --- ВРЕМЕННАЯ ДИАГНОСТИКА: ПРОВЕРКА ЦЕЛОСТНОСТИ ХЭША (ЭТО ГЛАВНОЕ) ---
-        // Пароль, который мы ожидаем увидеть
-        String expectedPassword = username.equals("admin") ? "adminpass" : "userpass";
-        String storedHash = user.getPassword();
+        // УДАЛИТЕ ИЛИ ЗАКОММЕНТИРУЙТЕ ЭТОТ БЛОК!
+    /*
+    String expectedPassword = username.equals("admin") ? "adminpass" : "userpass";
+    String storedHash = user.getPassword();
+    boolean hashCheck = passwordEncoder.matches(expectedPassword, storedHash);
+    log.warn("DIAGNOSTIC HASH CHECK for '{}'. Expected Pass: '{}'. Stored Hash: '{}'. Result: {}",
+            username, expectedPassword, storedHash, hashCheck);
 
-        // Проверяем, что хэш, хранящийся в БД, соответствует ожидаемому паролю
-        boolean hashCheck = passwordEncoder.matches(expectedPassword, storedHash);
-
-        log.warn("DIAGNOSTIC HASH CHECK for '{}'. Expected Pass: '{}'. Stored Hash: '{}'. Result: {}",
-                username, expectedPassword, storedHash, hashCheck);
-
-        if (!hashCheck) {
-            log.error("CRITICAL ERROR: Stored hash for user '{}' DOES NOT MATCH expected password '{}'. This will result in 401.",
-                    username, expectedPassword);
-        }
-        // --- КОНЕЦ ДИАГНОСТИКИ ---
+    if (!hashCheck) {
+        log.error("CRITICAL ERROR: Stored hash for user '{}' DOES NOT MATCH expected password '{}'. This will result in 401.",
+                username, expectedPassword);
+    }
+    */
+        // КОНЕЦ УДАЛЯЕМОГО БЛОКА
 
         return user;
     }
