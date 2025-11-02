@@ -21,6 +21,9 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 
 import java.util.List; // ВАЖНО: убедитесь, что List импортирован
 
+// ДОБАВИТЬ НОВЫЕ ИМПОРТЫ
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Configuration
 @EnableWebMvc
 @ComponentScan("org.itmo")
@@ -28,9 +31,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final ApplicationContext applicationContext;
 
+    private final SecurityConfig securityConfig; // <-- КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Добавить поле
+
     @Autowired
-    public WebConfig(ApplicationContext applicationContext) {
+    public WebConfig(ApplicationContext applicationContext, SecurityConfig securityConfig) {
         this.applicationContext = applicationContext;
+        this.securityConfig = securityConfig; // <-- Сохранить
     }
 
     @Bean

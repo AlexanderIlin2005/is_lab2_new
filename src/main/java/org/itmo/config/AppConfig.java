@@ -11,10 +11,13 @@ import org.springframework.orm.jpa.vendor.EclipseLinkJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import org.springframework.context.annotation.Import; // <-- ДОБАВИТЬ ЭТОТ ИМПОРТ
+
 @Configuration
 @ComponentScan("org.itmo") // Сканируем весь пакет org.itmo
 @EnableJpaRepositories(basePackages = "org.itmo.repository")
 @EnableTransactionManagement
+@Import({SecurityConfig.class, PasswordEncoderConfig.class, JacksonConfig.class})
 public class AppConfig {
 
     @Bean
