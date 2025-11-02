@@ -14,6 +14,14 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.URL; // <-- НОВЫЙ ИМПОРТ
 
+// ******************************************************
+// !!! НОВЫЕ ИМПОРТЫ ДЛЯ РУЧНОЙ РЕГИСТРАЦИИ ФИЛЬТРА !!!
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.springframework.web.filter.DelegatingFilterProxy; // Класс-Прокси для поиска бина Spring
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
+// ******************************************************
+
 public class Main {
     private static final int START_PORT = 8080;
     private static final int END_PORT = 10000;
@@ -56,6 +64,18 @@ public class Main {
                 "org.eclipse.jetty.annotations.AnnotationConfiguration",
                 // Этого достаточно, если нет web.xml
         });
+
+        // *******************************************************************
+        // !!! КРИТИЧЕСКИЙ ФИКС: РУЧНАЯ РЕГИСТРАЦИЯ SPRING SECURITY FILTER !!!
+        // *******************************************************************
+        // 1. Создаем делегирующий прокси-фильтр
+        FilterHolder springSecurityFilter = new FilterHolder(DelegatingFilterProxy.class);
+        // 2. Указываем, какой бин Spring должен найти этот прокси (это стандартное имя)
+        springSecurityFilter.setInitParameter("targetBeanName", "springSecurityFilterChain");
+
+        // 3. Добавляем фильтр в WebAppContext перед DispatcherServlet
+        context.addFilter(springSecurityFilter, "/*", EnumSet.of(DispatcherType.REQUEST));
+        // *******************************************************************
 
         // 1. РЕШЕНИЕ ПРОБЛЕМЫ WEBSOCKET (JSR-356) - теперь WebAppContext сам справится
         // JakartaWebSocketServletContainerInitializer.configure(context, ...);
