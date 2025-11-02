@@ -38,7 +38,6 @@
         .btn-success { background-color: #28a745; }
         .btn-success:hover { background-color: #218838; }
 
-
         .results-container { margin-top: 15px; padding: 15px; border-radius: 5px; text-align: left; }
         .success-message { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; border: 1px solid #c3e6cb; }
         .error-message { background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb; }
@@ -51,7 +50,7 @@
         #login-section {
             padding: 50px;
             text-align: center;
-            display: flex; /* Важно: будет flex, когда его показывают */
+            display: flex;
             flex-direction: column;
             align-items: center;
         }
@@ -67,7 +66,7 @@
             gap: 15px;
             align-items: stretch;
         }
-        #app-content { display: none; } /* Скрываем контент по умолчанию */
+        #app-content { display: none; }
         .section { display: none; }
         .section.active { display: block; }
 
@@ -80,6 +79,10 @@
             color: #a71d2a;
             text-decoration: underline;
         }
+
+        /* Новые стили для разделения прав */
+        .user-hidden { display: none; }
+        .user-visible { display: block; }
     </style>
 </head>
 <body>
@@ -93,7 +96,7 @@
             <input type="text" id="login-username" placeholder="Логин (admin или user)" required>
             <input type="password" id="login-password" placeholder="Пароль" required>
             <button type="submit" class="btn-success">Войти</button>
-            <p style="font-size: 0.9em; color: #666;">Тестовые данные: **admin/adminpass** или **user/userpass** (согласно настройкам вашего Spring Security)</p>
+            <p style="font-size: 0.9em; color: #666;">Тестовые данные: **admin/adminpass** или **user/userpass**</p>
         </form>
     </div>
 
@@ -104,14 +107,13 @@
                 <li><a href="#bands-section" class="nav-link active">Music Bands</a></li>
                 <li><a href="#studios-section" class="nav-link">Studios</a></li>
                 <li><a href="#albums-section" class="nav-link">Albums</a></li>
-                <li id="nav-operations-link"><a href="#operations-section" class="nav-link admin-only">Special Operations</a></li>
+                <li id="nav-operations-link"><a href="#operations-section" class="nav-link">Special Operations</a></li>
                 <li><a href="#history-section" class="nav-link">Import History</a></li>
                 <li style="margin-left: auto;"><button onclick="logout()" class="btn-danger" style="padding: 5px 10px;">Выход</button></li>
             </ul>
         </nav>
 
         <h1>MusicBand Information System</h1>
-
 
         <div id="bands-section" class="section active">
             <div class="controls">
@@ -154,7 +156,6 @@
             </div>
         </div>
 
-
         <div id="studios-section" class="section">
             <h2>Studio Management</h2>
 
@@ -183,7 +184,6 @@
                 <button id="nextStudioPage" onclick="changeStudioPage(1)">Next</button>
             </div>
         </div>
-
 
         <div id="albums-section" class="section">
             <h2>Albums Management</h2>
@@ -215,13 +215,13 @@
             </div>
         </div>
 
-
-        <div id="operations-section" class="section admin-only">
+        <div id="operations-section" class="section">
             <h2>Special Operations</h2>
             <div id="results" class="results-container">Operation results will be shown here.</div>
 
             <div class="special-operations">
-                <div class="operation-group">
+                <!-- Операции только для администраторов -->
+                <div class="operation-group user-hidden">
                     <h4>Delete Operations</h4>
                     <form onsubmit="handleDeleteByStudio(event)" class="operation-form">
                         <select id="studioNameToDelete" required>
@@ -231,7 +231,7 @@
                     </form>
                 </div>
 
-                <div class="operation-group">
+                <div class="operation-group user-hidden">
                     <h4>Statistics</h4>
                     <button onclick="handleAverageAlbums()" class="btn-info">Get Average Album Count</button>
                     <form onsubmit="handleCountStudio(event)" class="operation-form">
@@ -242,7 +242,7 @@
                     </form>
                 </div>
 
-                <div class="operation-group">
+                <div class="operation-group user-hidden">
                     <h4>Search & Modify</h4>
                     <form onsubmit="handleFindByGenre(event)" class="operation-form">
                         <select id="genreToFind" required>
@@ -261,6 +261,7 @@
                     </form>
                 </div>
 
+                <!-- XML импорт - доступен всем авторизованным пользователям -->
                 <div class="operation-group">
                     <h4>Bulk Import XML 📂</h4>
                     <form id="xmlImportForm" class="operation-form" enctype="multipart/form-data">
@@ -294,6 +295,7 @@
             </table>
         </div>
     </div>
+
     <div id="bandModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
@@ -339,7 +341,6 @@
         </div>
     </div>
 
-
     <div id="studioModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeStudioModal()">&times;</span>
@@ -377,7 +378,6 @@
         </div>
     </div>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
@@ -411,7 +411,6 @@
         const resultsDiv = document.getElementById('results');
         const modal = document.getElementById('bandModal');
 
-
         // =========================================================================
         //                      ФУНКЦИИ АУТЕНТИФИКАЦИИ
         // =========================================================================
@@ -424,7 +423,6 @@
             const headers = {
                 'Authorization': `Basic ${credentials}`,
             };
-            // Content-Type нужен для POST/PATCH, но не для FormData, где он генерируется браузером
             if (contentType !== 'multipart/form-data') {
                  headers['Content-Type'] = contentType;
             }
@@ -454,6 +452,7 @@
             loadStudios();
             loadAlbums();
             loadStudioSelects();
+            loadImportHistory();
             connectToWebSocket();
         }
 
@@ -513,9 +512,8 @@
             }
         }
 
-
         // =========================================================================
-        //                      ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (ПОЛНЫЙ КОМПЛЕКТ)
+        //                      ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
         // =========================================================================
 
         function connectToWebSocket() {
@@ -542,16 +540,22 @@
             });
         }
 
-
         function updateUIForRole() {
             const isAdmin = CURRENT_USER_ROLE === 'ADMIN';
+            const isUser = CURRENT_USER_ROLE === 'USER';
 
+            // Управление видимостью admin-only элементов
             document.querySelectorAll('.admin-only').forEach(el => {
                 if (el.tagName === 'LI' || (el.tagName === 'A' && el.parentNode.tagName === 'LI')) {
                     el.parentNode.style.display = isAdmin ? 'list-item' : 'none';
                 } else {
                     el.style.display = isAdmin ? '' : 'none';
                 }
+            });
+
+            // Управление видимостью операций для пользователей
+            document.querySelectorAll('.user-hidden').forEach(el => {
+                el.style.display = isAdmin ? '' : 'none';
             });
 
             // Перезагрузка таблиц для обновления ссылок "Edit/Delete"
@@ -571,12 +575,10 @@
             });
             document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
 
-
             if (sectionId === 'studios-section') { loadStudios(); }
             if (sectionId === 'operations-section') { loadStudioSelects(); }
             if (sectionId === 'history-section') { loadImportHistory(); }
         }
-
 
         function showError(message) {
             if (modal && modal.style.display === 'block') {
@@ -664,7 +666,6 @@
                     document.getElementById('coordinatesX').value = band.coordinates.x;
                     document.getElementById('coordinatesY').value = band.coordinates.y;
 
-                    // Загрузка селектов и установка значений
                     loadStudioSelects(band.studio ? band.studio.id : null);
                     loadAlbumSelects(band.bestAlbum ? band.bestAlbum.id : null);
 
@@ -762,11 +763,9 @@
             });
         });
 
-
         // =========================================================================
-        //                       CRUD и API ФУНКЦИИ (С АВТОРИЗАЦИЕЙ)
+        //                       CRUD и API ФУНКЦИИ
         // =========================================================================
-
 
         function loadStudioSelects(selectedId = null) {
             fetch(STUDIO_API_URL, { headers: getAuthHeaders() })
@@ -796,8 +795,7 @@
         }
 
         function loadAlbumSelects(selectedId = null) {
-            // Загрузка всех альбомов (для выбора "Best Album")
-             fetch(ALBUM_API_URL, { headers: getAuthHeaders() })
+            fetch(ALBUM_API_URL, { headers: getAuthHeaders() })
                 .then(response => response.json())
                 .then(data => {
                     albums = data.content || [];
@@ -819,7 +817,6 @@
                 .catch(error => console.error('Error loading albums:', error));
         }
 
-
         function buildApiUrl() {
             return `${API_URL}?page=${currentPage}&size=10&sort=${currentSortField},${currentSortOrder}&nameEquals=${encodeURIComponent(currentFilterName)}`;
         }
@@ -840,7 +837,6 @@
             }
         }
 
-
         function loadBands() {
             fetch(buildApiUrl(), { headers: getAuthHeaders() })
                 .then(response => {
@@ -860,7 +856,6 @@
                             : `<span style="color: #aaa;">Delete</span>`;
 
                         const row = tableBody.insertRow();
-                        // Предполагаем, что establishmentDate приходит в секундах (Unix timestamp)
                         const establishmentTimestamp = band.establishmentDate;
                         const dateToDisplay = (typeof establishmentTimestamp === 'number')
                             ? new Date(establishmentTimestamp * 1000).toLocaleDateString('ru-RU', {
@@ -916,96 +911,82 @@
         }
 
         function handleFormSubmit(event) {
-        event.preventDefault();
+            event.preventDefault();
+            clearFormErrors();
 
-        clearFormErrors();
-
-        if (!validateForm()) {
-            showError('Please fill all required fields correctly.');
-            return;
-        }
-
-        const bandId = document.getElementById('bandId').value;
-        const method = bandId ? 'PATCH' : 'POST';
-        const url = bandId ? `${API_URL}/${bandId}` : API_URL;
-
-
-        const establishmentDate = new Date(document.getElementById('establishmentDate').value).toISOString();
-
-        const studioId = document.getElementById('studioId').value;
-
-
-        let studioPayload = null;
-        if (studioId !== "") {
-
-            studioPayload = { id: parseInt(studioId) };
-        } else {
-
-            studioPayload = { id: null };
-        }
-
-
-        const formData = {
-            name: document.getElementById('name').value,
-            genre: document.getElementById('genre').value,
-            numberOfParticipants: parseInt(document.getElementById('numberOfParticipants').value),
-            singleCount: document.getElementById('singleCount').value ? parseInt(document.getElementById('singleCount').value) : null,
-            description: document.getElementById('description').value || null,
-            albumCount: parseInt(document.getElementById('albumCount').value),
-            establishmentDate: establishmentDate,
-            coordinates: {
-                x: parseFloat(document.getElementById('coordinatesX').value),
-                y: parseInt(document.getElementById('coordinatesY').value)
-            },
-            bestAlbum: document.getElementById('bestAlbumId').value ? { id: parseInt(document.getElementById('bestAlbumId').value) } : null,
-
-
-            studio: studioPayload,
-        };
-
-        console.log('Sending form data:', JSON.stringify(formData, null, 2));
-
-        fetch(url, {
-            method: method,
-            headers: getAuthHeaders(),
-            body: JSON.stringify(formData)
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.text().then(text => {
-                    console.log('Error response:', text);
-                    throw new Error(text || 'Submission failed!');
-                });
+            if (!validateForm()) {
+                showError('Please fill all required fields correctly.');
+                return;
             }
-            return response.json();
-        })
-        .then((data) => {
-            console.log('Success response:', data);
-            showSuccess(`Band ${bandId ? 'updated' : 'created'} successfully!`);
-            closeModal();
-            loadBands();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            try {
-                const errorData = JSON.parse(error.message);
-                if (errorData.errors) {
-                    errorData.errors.forEach(err => {
-                        showFieldError(err.field, err.defaultMessage);
+
+            const bandId = document.getElementById('bandId').value;
+            const method = bandId ? 'PATCH' : 'POST';
+            const url = bandId ? `${API_URL}/${bandId}` : API_URL;
+
+            const establishmentDate = new Date(document.getElementById('establishmentDate').value).toISOString();
+            const studioId = document.getElementById('studioId').value;
+
+            let studioPayload = null;
+            if (studioId !== "") {
+                studioPayload = { id: parseInt(studioId) };
+            } else {
+                studioPayload = { id: null };
+            }
+
+            const formData = {
+                name: document.getElementById('name').value,
+                genre: document.getElementById('genre').value,
+                numberOfParticipants: parseInt(document.getElementById('numberOfParticipants').value),
+                singleCount: document.getElementById('singleCount').value ? parseInt(document.getElementById('singleCount').value) : null,
+                description: document.getElementById('description').value || null,
+                albumCount: parseInt(document.getElementById('albumCount').value),
+                establishmentDate: establishmentDate,
+                coordinates: {
+                    x: parseFloat(document.getElementById('coordinatesX').value),
+                    y: parseInt(document.getElementById('coordinatesY').value)
+                },
+                bestAlbum: document.getElementById('bestAlbumId').value ? { id: parseInt(document.getElementById('bestAlbumId').value) } : null,
+                studio: studioPayload,
+            };
+
+            fetch(url, {
+                method: method,
+                headers: getAuthHeaders(),
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Submission failed!');
                     });
-                    showError('Please correct the validation errors above.');
-                } else {
+                }
+                return response.json();
+            })
+            .then((data) => {
+                showSuccess(`Band ${bandId ? 'updated' : 'created'} successfully!`);
+                closeModal();
+                loadBands();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                try {
+                    const errorData = JSON.parse(error.message);
+                    if (errorData.errors) {
+                        errorData.errors.forEach(err => {
+                            showFieldError(err.field, err.defaultMessage);
+                        });
+                        showError('Please correct the validation errors above.');
+                    } else {
+                        showError('Error: ' + error.message);
+                    }
+                } catch (e) {
                     showError('Error: ' + error.message);
                 }
-            } catch (e) {
-                showError('Error: ' + error.message);
-            }
-        });
-    }
+            });
+        }
 
         function deleteBand(id) {
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             if (confirm(`Are you sure you want to delete band with ID ${id}?`)) {
                 fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
                     .then(response => {
@@ -1050,7 +1031,6 @@
                 })
                 .catch(error => showError('Error loading band details: ' + error.message));
         }
-
 
         // --- Studio CRUD ---
 
@@ -1127,7 +1107,7 @@
         }
 
         function deleteStudio(id) {
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             if (confirm(`Are you sure you want to delete studio with ID ${id}?`)) {
                 fetch(`${STUDIO_API_URL}/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
                     .then(response => {
@@ -1223,14 +1203,14 @@
         }
 
         function deleteAlbum(id) {
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             if (confirm(`Are you sure you want to delete album with ID ${id}?`)) {
                 fetch(`${ALBUM_API_URL}/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
                     .then(response => {
                         if (response.ok) {
                             showSuccess('Album deleted successfully!');
                             loadAlbums();
-                            loadBands(); // Обновляем группы, так как мог быть удален лучший альбом
+                            loadBands();
                         } else {
                             throw new Error('Failed to delete album. It might be set as Best Album.');
                         }
@@ -1247,11 +1227,11 @@
             }
         }
 
-        // --- Special Operations (Admin only) ---
+        // --- Special Operations ---
 
         function handleDeleteByStudio(event) {
             event.preventDefault();
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             const studioName = document.getElementById('studioNameToDelete').value;
             if (!studioName) return showError('Please select a studio.');
 
@@ -1268,7 +1248,7 @@
         }
 
         function handleAverageAlbums() {
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             fetch(`${API_URL}/average-album-count`, { headers: getAuthHeaders() })
                 .then(res => {
                     if (!res.ok) throw new Error('Network response was not ok');
@@ -1282,7 +1262,7 @@
 
         function handleCountStudio(event) {
             event.preventDefault();
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             const studioName = document.getElementById('studioNameToCount').value;
             if (!studioName) return showError('Please select a studio.');
 
@@ -1299,7 +1279,7 @@
 
         function handleFindByGenre(event) {
             event.preventDefault();
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             const genre = document.getElementById('genreToFind').value;
             if (!genre) return showError('Please select a genre.');
 
@@ -1317,7 +1297,7 @@
 
         function handleRemoveParticipant(event) {
             event.preventDefault();
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
             const bandId = document.getElementById('bandIdToRemoveFrom').value;
             if (!bandId) return showError('Please enter a Band ID.');
 
@@ -1335,8 +1315,6 @@
 
         async function handleXmlImport(event) {
             event.preventDefault();
-            if (!CURRENT_USER_ROLE === 'ADMIN') return showError('Permission denied.');
-
             const fileInput = document.getElementById('xmlFile');
             const file = fileInput.files[0];
             if (!file) { showError('⚠️ Пожалуйста, выберите XML файл для импорта.'); return; }
@@ -1345,9 +1323,7 @@
             formData.append('file', file);
 
             try {
-                // Получаем заголовки, не включая Content-Type, так как FormData устанавливает его автоматически
                 const authHeaders = getAuthHeaders('multipart/form-data');
-
                 const response = await fetch(XML_IMPORT_URL, {
                     method: 'POST',
                     headers: authHeaders,
@@ -1363,20 +1339,17 @@
                     }
                     fileInput.value = '';
                     loadBands();
-                    loadImportHistory(); // Обновляем историю после импорта
+                    loadImportHistory();
                 } else {
                     let errorMsg = `Импорт не удался. Статус: ${response.status} ${response.statusText}`;
-
                     try {
                         const errorData = await response.json();
                         if (errorData.error) { errorMsg = errorData.error; }
                     } catch (e) {
                         console.warn("Не удалось прочитать JSON из ответа об ошибке.");
                     }
-
                     throw new Error(errorMsg);
                 }
-
             } catch (error) {
                 showError('❌ ' + error.message);
             }
