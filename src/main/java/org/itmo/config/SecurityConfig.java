@@ -12,7 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder; 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,14 +23,7 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
-
-
-
-
-
-
-
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher; 
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +37,7 @@ public class SecurityConfig {
     private UserService userService;
 
     @Autowired
-    private PasswordEncoder passwordEncoder; 
+    private PasswordEncoder passwordEncoder;
 
     @Bean
     public BasicAuthenticationEntryPoint authenticationEntryPoint() {
@@ -64,27 +57,27 @@ public class SecurityConfig {
         return source;
     }
 
-    
+
     @Bean
     public AuthenticationManager authenticationManager() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        
+
         authProvider.setUserDetailsService(userService);
-        
+
         authProvider.setPasswordEncoder(passwordEncoder);
         return new ProviderManager(authProvider);
     }
 
-    
+
     @Bean
     public BasicAuthenticationFilter basicAuthenticationFilter(HttpSecurity http) throws Exception {
-        
+
         AuthenticationManager authenticationManager = authenticationManager();
         return new BasicAuthenticationFilter(authenticationManager, authenticationEntryPoint());
     }
 
 
-    
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -100,44 +93,54 @@ public class SecurityConfig {
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                
+
                 .authorizeHttpRequests(auth -> auth
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/**", HttpMethod.OPTIONS.name())).permitAll()
 
-                        
+
                         .requestMatchers(
                                 new AntPathRequestMatcher("/"),
                                 new AntPathRequestMatcher("/index.html"),
                                 new AntPathRequestMatcher("/ws/**")
                         ).permitAll()
 
-                        
+                        // 1. Регистрация: разрешена всем
+                        .requestMatchers(new AntPathRequestMatcher("/api/auth/register", HttpMethod.POST.name())).permitAll()
+
+                        // 2. ✅ ИСПРАВЛЕНИЕ: Разрешаем /api/users/me всем аутентифицированным пользователям.
+                        //    Это должно быть ДО общего правила /api/users/**.
+                        .requestMatchers(new AntPathRequestMatcher("/api/users/me")).authenticated()
+
+                        // 3. Управление пользователями: только для ADMIN
+                        .requestMatchers(new AntPathRequestMatcher("/api/users/**")).hasAuthority("ROLE_ADMIN")
+
+
                         .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.GET.name())).permitAll()
 
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/api/music-bands", HttpMethod.POST.name())).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.PATCH.name())).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/api/music-bands/**", HttpMethod.DELETE.name())).hasAuthority("ROLE_ADMIN")
 
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/api/music-bands/import/xml", HttpMethod.POST.name())).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        
+
                         .requestMatchers(new AntPathRequestMatcher("/api/import-history", HttpMethod.GET.name())).authenticated()
 
-                        
-                        
+
+
                         .requestMatchers(
                                 new AntPathRequestMatcher("/api/studios/**"),
                                 new AntPathRequestMatcher("/api/albums/**")
                         ).hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        
+
                         .anyRequest().authenticated()
                 );
 

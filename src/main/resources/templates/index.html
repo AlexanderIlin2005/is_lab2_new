@@ -54,7 +54,11 @@
             flex-direction: column;
             align-items: center;
         }
-        #login-form {
+        #login-forms-container {
+            display: flex; /* НОВОЕ */
+            gap: 30px; /* НОВОЕ */
+        }
+        #login-form, #register-form { /* ИЗМЕНЕНО: Добавлен #register-form */
             margin-top: 20px;
             padding: 30px;
             border: 1px solid #ddd;
@@ -83,6 +87,12 @@
 
         .user-hidden { display: none; }
         .user-visible { display: block; }
+
+        /* НОВОЕ */
+        .admin-nav-item {
+            display: none; /* Управляется JS */
+        }
+        /* /НОВОЕ */
     </style>
 </head>
 <body>
@@ -90,14 +100,26 @@
 <div class="container">
 
     <div id="login-section" style="display: flex;">
-        <h2>Вход в систему</h2>
+        <h2>Система аутентификации</h2>
         <div id="login-error-message" class="error-message" style="display:none; margin-bottom: 15px;"></div>
-        <form id="login-form" onsubmit="attemptLogin(event)">
-            <input type="text" id="login-username" placeholder="Логин (admin или user)" required>
-            <input type="password" id="login-password" placeholder="Пароль" required>
-            <button type="submit" class="btn-success">Войти</button>
 
-        </form>
+        <div id="login-forms-container">
+
+            <form id="login-form" onsubmit="attemptLogin(event)">
+                <h3>Вход</h3>
+                <input type="text" id="login-username" placeholder="Логин" required>
+                <input type="password" id="login-password" placeholder="Пароль" required>
+                <button type="submit" class="btn-success">Войти</button>
+            </form>
+
+            <form id="register-form" onsubmit="attemptRegister(event)">
+                <h3>Регистрация</h3>
+                <input type="text" id="reg-username" placeholder="Логин" required>
+                <input type="password" id="reg-password" placeholder="Пароль" required>
+                <button type="submit" class="btn-info">Зарегистрироваться</button>
+                <div id="register-message" class="info-message" style="display:none;"></div>
+            </form>
+        </div>
     </div>
 
     <div id="app-content">
@@ -108,7 +130,7 @@
                 <li><a href="#studios-section" class="nav-link">Studios</a></li>
                 <li><a href="#albums-section" class="nav-link">Albums</a></li>
                 <li id="nav-operations-link"><a href="#operations-section" class="nav-link">Special Operations</a></li>
-                <li><a href="#history-section" class="nav-link">Import History</a></li>
+                <li class="admin-nav-item"><a href="#user-management-section" class="nav-link">Управление Пользователями</a></li> <li><a href="#history-section" class="nav-link">Import History</a></li>
                 <li style="margin-left: auto;"><button onclick="logout()" class="btn-danger" style="padding: 5px 10px;">Выход</button></li>
             </ul>
         </nav>
@@ -215,12 +237,29 @@
             </div>
         </div>
 
+        <div id="user-management-section" class="section">
+            <h2>Управление Пользователями</h2>
+            <div id="userManagementMessage" class="results-container"></div>
+            <button onclick="loadAllUsers()" class="btn-info" style="margin-bottom: 15px;">Обновить Список Пользователей</button>
+            <table id="usersTable">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Роль</th>
+                    <th>Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td colspan="4">Нажмите "Обновить Список Пользователей" для загрузки.</td></tr>
+                </tbody>
+            </table>
+        </div>
         <div id="operations-section" class="section">
             <h2>Special Operations</h2>
             <div id="results" class="results-container">Operation results will be shown here.</div>
 
             <div class="special-operations">
-                <!-- Операции только для администраторов -->
                 <div class="operation-group user-hidden">
                     <h4>Delete Operations</h4>
                     <form onsubmit="handleDeleteByStudio(event)" class="operation-form">
@@ -261,7 +300,6 @@
                     </form>
                 </div>
 
-                <!-- XML импорт - доступен всем авторизованным пользователям -->
                 <div class="operation-group">
                     <h4>Bulk Import XML 📂</h4>
                     <form id="xmlImportForm" class="operation-form" enctype="multipart/form-data">
@@ -407,6 +445,8 @@
         const XML_IMPORT_URL = `${API_URL}/import/xml`;
         const IMPORT_HISTORY_API_URL = '/api/import-history';
         const WHOAMI_URL = '/api/users/me';
+        const REGISTER_URL = '/api/auth/register'; // НОВОЕ
+        const USERS_API_URL = '/api/users'; // НОВОЕ
 
         const resultsDiv = document.getElementById('results');
         const modal = document.getElementById('bandModal');
@@ -417,6 +457,7 @@
 
         function getAuthHeaders(contentType = 'application/json') {
             if (!CURRENT_USERNAME || !CURRENT_PASSWORD) {
+                // Возвращаем только Content-Type для неавторизованных запросов (например, регистрации)
                 return { 'Content-Type': contentType };
             }
             const credentials = btoa(`${CURRENT_USERNAME}:${CURRENT_PASSWORD}`);
@@ -437,6 +478,14 @@
 
         function clearLoginError() {
             document.getElementById('login-error-message').style.display = 'none';
+        }
+
+        function showRegisterMessage(message, isError = false) { // НОВОЕ
+            const messageDiv = document.getElementById('register-message');
+            messageDiv.textContent = isError ? `❌ ${message}` : `✅ ${message}`;
+            messageDiv.className = isError ? 'error-message' : 'success-message';
+            messageDiv.style.display = 'block';
+            setTimeout(() => { messageDiv.style.display = 'none'; }, 5000);
         }
 
         function setAuthState(username, password, role) {
@@ -461,10 +510,10 @@
             CURRENT_PASSWORD = null;
             CURRENT_USER_ROLE = null;
 
-            // 🟢 НОВОЕ: Удаляем данные из sessionStorage
-    sessionStorage.removeItem('username');
-    sessionStorage.removeItem('password');
-    sessionStorage.removeItem('role');
+            // 🟢 Удаляем данные из sessionStorage
+            sessionStorage.removeItem('username');
+            sessionStorage.removeItem('password');
+            sessionStorage.removeItem('role');
 
             if (stompClient && stompClient.connected) {
                 stompClient.disconnect();
@@ -475,6 +524,7 @@
             clearLoginError();
             showInfo('Вы вышли из системы.');
             document.getElementById('login-form').reset();
+            document.getElementById('register-form').reset(); // НОВОЕ
         }
 
         async function attemptLogin(event) {
@@ -509,10 +559,10 @@
                     return;
                 }
 
-                // 🟢 НОВОЕ: Сохраняем учетные данные и роль в sessionStorage
-        sessionStorage.setItem('username', username);
-        sessionStorage.setItem('password', password);
-        sessionStorage.setItem('role', role);
+                // 🟢 Сохраняем учетные данные и роль в sessionStorage
+                sessionStorage.setItem('username', username);
+                sessionStorage.setItem('password', password);
+                sessionStorage.setItem('role', role);
 
                 setAuthState(username, password, role);
 
@@ -522,37 +572,69 @@
             }
         }
 
+        // НОВАЯ ФУНКЦИЯ РЕГИСТРАЦИИ
+        async function attemptRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('reg-username').value;
+            const password = document.getElementById('reg-password').value;
+            document.getElementById('register-message').style.display = 'none';
+
+            if (!username || !password) {
+                showRegisterMessage('Введите логин и пароль.', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(REGISTER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.status === 201) {
+                    showRegisterMessage('Регистрация успешна! Теперь вы можете войти.', false);
+                    document.getElementById('reg-username').value = '';
+                    document.getElementById('reg-password').value = '';
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.message || `Ошибка регистрации: ${response.status} ${response.statusText}`;
+                    showRegisterMessage(errorMessage, true);
+                }
+            } catch (error) {
+                showRegisterMessage(`Сетевая ошибка: ${error.message}`, true);
+            }
+        }
+        // /НОВАЯ ФУНКЦИЯ РЕГИСТРАЦИИ
+
         function initializeAuthOnReload() {
-    const savedUsername = sessionStorage.getItem('username');
-    const savedPassword = sessionStorage.getItem('password');
-    const savedRole = sessionStorage.getItem('role');
+            const savedUsername = sessionStorage.getItem('username');
+            const savedPassword = sessionStorage.getItem('password');
+            const savedRole = sessionStorage.getItem('role');
 
-    if (savedUsername && savedPassword && savedRole) {
-        // Если данные найдены, восстанавливаем состояние и UI
-        CURRENT_USERNAME = savedUsername;
-        CURRENT_PASSWORD = savedPassword;
-        CURRENT_USER_ROLE = savedRole;
+            if (savedUsername && savedPassword && savedRole) {
+                // Если данные найдены, восстанавливаем состояние и UI
+                CURRENT_USERNAME = savedUsername;
+                CURRENT_PASSWORD = savedPassword;
+                CURRENT_USER_ROLE = savedRole;
 
-        // Восстанавливаем приложение (вызываем setAuthState напрямую)
-        document.getElementById('login-section').style.display = 'none';
-        document.getElementById('app-content').style.display = 'block';
+                // Восстанавливаем приложение (вызываем setAuthState напрямую, но без перезагрузки)
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
 
-        updateUIForRole();
-        loadBands();
-        loadStudios();
-        loadAlbums();
-        loadStudioSelects();
-        loadImportHistory();
-        connectToWebSocket();
-        showInfo(`Состояние восстановлено для пользователя: ${savedUsername}`);
-    } else {
-        // Если данных нет, показываем форму входа
-        document.getElementById('login-section').style.display = 'flex';
-        document.getElementById('app-content').style.display = 'none';
-
-        // Дополнительно: убедитесь, что все остальные секции скрыты, если пользователь не вошел.
-    }
-}
+                updateUIForRole();
+                loadBands();
+                loadStudios();
+                loadAlbums();
+                loadStudioSelects();
+                loadImportHistory();
+                connectToWebSocket();
+                showInfo(`Состояние восстановлено для пользователя: ${savedUsername} (${savedRole})`);
+            } else {
+                // Если данных нет, показываем форму входа
+                document.getElementById('login-section').style.display = 'flex';
+                document.getElementById('app-content').style.display = 'none';
+            }
+        }
 
         // =========================================================================
         //                      ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -584,20 +666,20 @@
 
         function updateUIForRole() {
             const isAdmin = CURRENT_USER_ROLE === 'ADMIN';
-            const isUser = CURRENT_USER_ROLE === 'USER';
 
             // Управление видимостью admin-only элементов
             document.querySelectorAll('.admin-only').forEach(el => {
-                if (el.tagName === 'LI' || (el.tagName === 'A' && el.parentNode.tagName === 'LI')) {
-                    el.parentNode.style.display = isAdmin ? 'list-item' : 'none';
-                } else {
-                    el.style.display = isAdmin ? '' : 'none';
-                }
+                el.style.display = isAdmin ? '' : 'none';
             });
 
-            // Управление видимостью операций для пользователей
+            // Управление видимостью операций для администраторов
             document.querySelectorAll('.user-hidden').forEach(el => {
                 el.style.display = isAdmin ? 'block' : 'none';
+            });
+
+            // НОВОЕ: Управление видимостью навигационной ссылки "Управление Пользователями"
+            document.querySelectorAll('.admin-nav-item').forEach(el => {
+                el.style.display = isAdmin ? 'list-item' : 'none';
             });
 
             // Перезагрузка таблиц для обновления ссылок "Edit/Delete"
@@ -620,6 +702,7 @@
             if (sectionId === 'studios-section') { loadStudios(); }
             if (sectionId === 'operations-section') { loadStudioSelects(); }
             if (sectionId === 'history-section') { loadImportHistory(); }
+            if (sectionId === 'user-management-section') { loadAllUsers(); } // НОВОЕ
         }
 
         function showError(message) {
@@ -796,7 +879,7 @@
             });
 
             // Запускаем восстановление аутентификации при загрузке страницы
-    initializeAuthOnReload();
+            initializeAuthOnReload();
 
             const xmlImportForm = document.getElementById('xmlImportForm');
             if (xmlImportForm) {
@@ -829,15 +912,27 @@
                             const option = document.createElement('option');
                             option.value = studio.name;
                             option.textContent = studio.name;
-                            if (select === studioSelect && selectedId === studio.id) {
+                            if (select === studioSelect) {
+                                // For the band creation modal, we need the ID as value
+                                option.value = studio.id;
+                            } else if (select === studioSelect && selectedId === studio.id) {
                                 option.selected = true;
+                            } else if (select !== studioSelect) {
+                                // For special ops, the value should be the name
+                                option.value = studio.name;
                             }
                             select.appendChild(option);
                         });
                     });
+
+                    // Fix: Set the correct selected ID for the main form after options are populated
+                    if (studioSelect && selectedId !== null) {
+                        studioSelect.value = selectedId;
+                    }
                 })
                 .catch(error => console.error('Error loading studios:', error));
         }
+
 
         function loadAlbumSelects(selectedId = null) {
             fetch(ALBUM_API_URL, { headers: getAuthHeaders() })
@@ -896,6 +991,10 @@
                     const bands = data.content || [];
 
                     bands.forEach(band => {
+                        const editLink = isAdmin
+                            ? `<a href="#" onclick="openEditModal(${band.id})">Edit</a>`
+                            : `<span style="color: #aaa;">Edit</span>`;
+
                         const deleteLink = isAdmin
                             ? `<a href="#" onclick="deleteBand(${band.id})" class="text-danger">Delete</a>`
                             : `<span style="color: #aaa;">Delete</span>`;
@@ -922,7 +1021,7 @@
                             <td>${band.studio ? band.studio.name : 'No Studio'}</td>
                             <td>${dateToDisplay}</td>
                             <td>
-                                <a href="#" onclick="openEditModal(${band.id})">Edit</a>
+                                ${editLink}
                                 |
                                 ${deleteLink}
                             </td>
@@ -943,6 +1042,7 @@
         function validateForm() {
             let isValid = true;
             const requiredFields = ['name', 'numberOfParticipants', 'albumCount', 'establishmentDate', 'coordinatesX', 'coordinatesY'];
+            clearFormErrors();
 
             requiredFields.forEach(field => {
                 const element = document.getElementById(field);
@@ -968,15 +1068,12 @@
             const method = bandId ? 'PATCH' : 'POST';
             const url = bandId ? `${API_URL}/${bandId}` : API_URL;
 
-            const establishmentDate = new Date(document.getElementById('establishmentDate').value).toISOString();
-            const studioId = document.getElementById('studioId').value;
+            // Converting datetime-local to ISO-8601 (which the backend will parse)
+            const establishmentDateInput = document.getElementById('establishmentDate').value;
+            const establishmentDate = establishmentDateInput ? new Date(establishmentDateInput).toISOString() : null;
 
-            let studioPayload = null;
-            if (studioId !== "") {
-                studioPayload = { id: parseInt(studioId) };
-            } else {
-                studioPayload = { id: null };
-            }
+            const studioId = document.getElementById('studioId').value;
+            const bestAlbumId = document.getElementById('bestAlbumId').value;
 
             const formData = {
                 name: document.getElementById('name').value,
@@ -990,8 +1087,8 @@
                     x: parseFloat(document.getElementById('coordinatesX').value),
                     y: parseInt(document.getElementById('coordinatesY').value)
                 },
-                bestAlbum: document.getElementById('bestAlbumId').value ? { id: parseInt(document.getElementById('bestAlbumId').value) } : null,
-                studio: studioPayload,
+                bestAlbum: bestAlbumId ? { id: parseInt(bestAlbumId) } : null,
+                studio: studioId ? { id: parseInt(studioId) } : null,
             };
 
             fetch(url, {
@@ -999,7 +1096,7 @@
                 headers: getAuthHeaders(),
                 body: JSON.stringify(formData)
             })
-            .then(response => {
+            .then(async response => {
                 if (!response.ok) {
                     return response.text().then(text => {
                         throw new Error(text || 'Submission failed!');
@@ -1015,17 +1112,22 @@
             .catch(error => {
                 console.error('Error:', error);
                 try {
-                    const errorData = JSON.parse(error.message);
-                    if (errorData.errors) {
+                    const errorText = error.message;
+                    const errorData = JSON.parse(errorText);
+
+                    if (errorData.errors && Array.isArray(errorData.errors)) {
                         errorData.errors.forEach(err => {
+                            // Spring Validation error structure
                             showFieldError(err.field, err.defaultMessage);
                         });
                         showError('Please correct the validation errors above.');
+                    } else if (errorData.message) {
+                        showError('Error: ' + errorData.message);
                     } else {
-                        showError('Error: ' + error.message);
+                        showError('Error: ' + errorText);
                     }
                 } catch (e) {
-                    showError('Error: ' + error.message);
+                    showError('Server Error: ' + error.message);
                 }
             });
         }
@@ -1096,6 +1198,10 @@
 
                     if (Array.isArray(data)) {
                         data.forEach(studio => {
+                            const editLink = isAdmin
+                                ? `<a href="#" onclick="openEditStudioModal(${studio.id})">Edit</a>`
+                                : `<span style="color: #aaa;">Edit</span>`;
+
                             const deleteLink = isAdmin
                                 ? `<a href="#" onclick="deleteStudio(${studio.id})" class="text-danger">Delete</a>`
                                 : `<span style="color: #aaa;">Delete</span>`;
@@ -1105,7 +1211,7 @@
                                 <td>${studio.id}</td>
                                 <td>${studio.name}</td>
                                 <td>
-                                    <a href="#" onclick="openEditStudioModal(${studio.id})">Edit</a>
+                                    ${editLink}
                                     |
                                     ${deleteLink}
                                 </td>
@@ -1160,6 +1266,7 @@
                             showSuccess('Studio deleted successfully!');
                             loadStudios();
                             loadStudioSelects();
+                            loadBands(); // Bands might have changed their studio reference
                         } else {
                             throw new Error('Failed to delete studio. It might still contain bands.');
                         }
@@ -1183,6 +1290,10 @@
                     const albumsList = data.content || [];
 
                     albumsList.forEach(album => {
+                        const editLink = isAdmin
+                            ? `<a href="#" onclick="openEditAlbumModal(${album.id})">Edit</a>`
+                            : `<span style="color: #aaa;">Edit</span>`;
+
                         const deleteLink = isAdmin
                             ? `<a href="#" onclick="deleteAlbum(${album.id})" class="text-danger">Delete</a>`
                             : `<span style="color: #aaa;">Delete</span>`;
@@ -1195,7 +1306,7 @@
                             <td>${album.length.toFixed(2)}</td>
                             <td>${album.sales.toFixed(2)}</td>
                             <td>
-                                <a href="#" onclick="openEditAlbumModal(${album.id})">Edit</a>
+                                ${editLink}
                                 |
                                 ${deleteLink}
                             </td>
@@ -1243,6 +1354,7 @@
                 showSuccess(`Album ${isUpdate ? 'updated' : 'created'} successfully!`);
                 closeAlbumModal();
                 loadAlbums();
+                loadBands(); // Bands might have changed best album reference
             })
             .catch(error => showError('Error: ' + error.message));
         }
@@ -1293,45 +1405,42 @@
         }
 
         function handleAverageAlbums() {
-    if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
-    fetch(`${API_URL}/average-album-count`, { headers: getAuthHeaders() })
-        .then(res => {
-            if (!res.ok) throw new Error('Network response was not ok');
-            return res.json();
-        })
-        .then(data => {
-            // Исправление: data содержит объект с полем average, а не просто число
-            showInfo(`Average album count across all bands: ${data.average.toFixed(2)}`);
-        })
-        .catch(error => showError('Error fetching average: ' + error.message));
-}
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
+            fetch(`${API_URL}/average-album-count`, { headers: getAuthHeaders() })
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    showInfo(`Average album count across all bands: ${data.average.toFixed(2)}`);
+                })
+                .catch(error => showError('Error fetching average: ' + error.message));
+        }
 
         function handleCountStudio(event) {
-    event.preventDefault();
-    if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
-    const studioName = document.getElementById('studioNameToCount').value;
-    if (!studioName) return showError('Please select a studio.');
+            event.preventDefault();
+            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
+            const studioName = document.getElementById('studioNameToCount').value;
+            if (!studioName) return showError('Please select a studio.');
 
-    // Получаем все группы и фильтруем на фронтенде
-    fetch(`${API_URL}?size=1000`, { headers: getAuthHeaders() })
-        .then(res => {
-            if (!res.ok) throw new Error('Network response was not ok');
-            return res.json();
-        })
-        .then(data => {
-            const allBands = data.content || [];
+            // Исправляем логику для использования эндпоинта, если он существует
+            // Если эндпоинт count-by-studio?studioName={name} возвращает count > name, используем его.
+            // Предполагаем, что бэкенд имеет эндпоинт для этой логики:
 
-            // Фильтруем группы где studio.name > заданного studioName
-            const filteredBands = allBands.filter(band =>
-                band.studio && band.studio.name && band.studio.name > studioName
-            );
-
-            const bandNames = filteredBands.map(b => b.name).join(', ');
-            showInfo(`Found ${filteredBands.length} band(s) where studio name is greater than '${studioName}': ${bandNames}`);
-            document.getElementById('studioNameToCount').value = '';
-        })
-        .catch(error => showError('Error fetching bands: ' + error.message));
-}
+            fetch(`${API_URL}/count-by-studio?studioName=${encodeURIComponent(studioName)}`, { headers: getAuthHeaders() })
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    // Предполагаем, что ответ - это объект { count: number }
+                    showInfo(`Found ${data.count} band(s) where studio name is lexicographically greater than '${studioName}'.`);
+                })
+                .catch(error => {
+                    // Если эндпоинт не найден, возвращаемся к старому логированию
+                    showError('Error fetching count: ' + error.message);
+                });
+        }
 
         function handleFindByGenre(event) {
             event.preventDefault();
@@ -1468,6 +1577,119 @@
                 `;
             });
         }
+
+        // --- НОВЫЕ ФУНКЦИИ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+        async function loadAllUsers() {
+            const tableBody = document.querySelector('#usersTable tbody');
+            const messageDiv = document.getElementById('userManagementMessage');
+            messageDiv.innerHTML = '';
+
+            if (CURRENT_USER_ROLE !== 'ADMIN') {
+                messageDiv.innerHTML = '<div class="error-message">❌ Доступ запрещен. Только для администраторов.</div>';
+                tableBody.innerHTML = '<tr><td colspan="4">Доступ запрещен.</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = '<tr><td colspan="4"><div class="info-message">Загрузка пользователей...</div></td></tr>';
+
+            try {
+                const response = await fetch(USERS_API_URL, { headers: getAuthHeaders() });
+
+                if (response.status === 403) {
+                    throw new Error('У вас нет прав администратора для просмотра этого раздела.');
+                }
+                if (!response.ok) {
+                    throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
+                }
+
+                const users = await response.json();
+                renderUsersTable(users);
+
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="error-message">❌ Ошибка: ${error.message}</div>`;
+                tableBody.innerHTML = '<tr><td colspan="4">Ошибка загрузки.</td></tr>';
+            }
+        }
+
+        function renderUsersTable(users) {
+    const tableBody = document.querySelector('#usersTable tbody');
+    tableBody.innerHTML = '';
+
+    const adminCount = users.filter(u => u.role === 'ADMIN').length;
+
+    if (users.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4">Пользователи не найдены.</td></tr>';
+        return;
+    }
+
+    users.forEach(user => {
+        // 🚨 ИСПРАВЛЕНИЕ ЗДЕСЬ: Пропускаем пользователя, если ID отсутствует (undefined/null/0)
+        if (!user.id) {
+            console.warn('Пропущен пользователь с некорректным ID:', user);
+            return;
+        }
+
+        const row = tableBody.insertRow();
+        const isCurrentUser = user.username === CURRENT_USERNAME;
+
+        // Не даём менять свою роль и не даём снимать последнюю роль ADMIN
+        const disableButton = isCurrentUser || (user.role === 'ADMIN' && adminCount === 1);
+
+        let buttonText = user.role === 'ADMIN' ? 'Сделать USER' : 'Сделать ADMIN';
+        let buttonTitle = '';
+        let buttonClass = user.role === 'ADMIN' ? 'btn-warning' : 'btn-success';
+
+        if (isCurrentUser) {
+            buttonTitle = 'Нельзя изменить свою роль';
+        } else if (user.role === 'ADMIN' && adminCount === 1) {
+            buttonTitle = 'Нельзя снять последнюю роль ADMIN';
+        }
+
+        row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.username}${isCurrentUser ? ' (Вы)' : ''}</td>
+            <td><span style="font-weight: bold;">${user.role}</span></td>
+            <td>
+                <button
+                    onclick="updateUserRole(${user.id}, '${user.role}')"
+                    ${disableButton ? 'disabled' : ''}
+                    title="${buttonTitle}"
+                    class="${buttonClass}"
+                >
+                    ${buttonText}
+                </button>
+            </td>
+        `;
+    });
+}
+
+        async function updateUserRole(userId, currentRole) {
+            const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
+            const messageDiv = document.getElementById('userManagementMessage');
+            messageDiv.innerHTML = `<div class="info-message">Обновление роли пользователя #${userId} на ${newRole}...</div>`;
+
+            try {
+                // Предполагаем эндпоинт PATCH /api/users/{id}/role?newRole={role}
+                const response = await fetch(`${USERS_API_URL}/${userId}/role?newRole=${newRole}`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.ok) {
+                    messageDiv.innerHTML = `<div class="success-message">✅ Роль пользователя #${userId} успешно изменена на ${newRole}.</div>`;
+                    loadAllUsers(); // Перезагрузить таблицу
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.message || `Ошибка при смене роли: ${response.status} ${response.statusText}`;
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="error-message">❌ Ошибка: ${error.message}</div>`;
+            }
+        }
+        // --- /НОВЫЕ ФУНКЦИИ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
     </script>
 </body>
 </html>
