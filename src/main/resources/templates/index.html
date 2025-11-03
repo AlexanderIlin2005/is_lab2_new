@@ -597,7 +597,7 @@
 
             // Управление видимостью операций для пользователей
             document.querySelectorAll('.user-hidden').forEach(el => {
-                el.style.display = isAdmin ? '' : 'none';
+                el.style.display = isAdmin ? 'block' : 'none';
             });
 
             // Перезагрузка таблиц для обновления ссылок "Edit/Delete"
@@ -1293,34 +1293,45 @@
         }
 
         function handleAverageAlbums() {
-            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
-            fetch(`${API_URL}/average-album-count`, { headers: getAuthHeaders() })
-                .then(res => {
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    return res.json();
-                })
-                .then(avg => {
-                    showInfo(`Average album count across all bands: ${avg.toFixed(2)}`);
-                })
-                .catch(error => showError('Error fetching average: ' + error.message));
-        }
+    if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
+    fetch(`${API_URL}/average-album-count`, { headers: getAuthHeaders() })
+        .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+        })
+        .then(data => {
+            // Исправление: data содержит объект с полем average, а не просто число
+            showInfo(`Average album count across all bands: ${data.average.toFixed(2)}`);
+        })
+        .catch(error => showError('Error fetching average: ' + error.message));
+}
 
         function handleCountStudio(event) {
-            event.preventDefault();
-            if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
-            const studioName = document.getElementById('studioNameToCount').value;
-            if (!studioName) return showError('Please select a studio.');
+    event.preventDefault();
+    if (CURRENT_USER_ROLE !== 'ADMIN') return showError('Permission denied.');
+    const studioName = document.getElementById('studioNameToCount').value;
+    if (!studioName) return showError('Please select a studio.');
 
-            fetch(`${API_URL}/count-by-studio?studioName=${encodeURIComponent(studioName)}`, { headers: getAuthHeaders() })
-                .then(res => {
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    return res.json();
-                })
-                .then(count => {
-                    showInfo(`Bands with studio name lexicographically greater than '${studioName}': ${count}`);
-                })
-                .catch(error => showError('Error fetching count: ' + error.message));
-        }
+    // Получаем все группы и фильтруем на фронтенде
+    fetch(`${API_URL}?size=1000`, { headers: getAuthHeaders() })
+        .then(res => {
+            if (!res.ok) throw new Error('Network response was not ok');
+            return res.json();
+        })
+        .then(data => {
+            const allBands = data.content || [];
+
+            // Фильтруем группы где studio.name > заданного studioName
+            const filteredBands = allBands.filter(band =>
+                band.studio && band.studio.name && band.studio.name > studioName
+            );
+
+            const bandNames = filteredBands.map(b => b.name).join(', ');
+            showInfo(`Found ${filteredBands.length} band(s) where studio name is greater than '${studioName}': ${bandNames}`);
+            document.getElementById('studioNameToCount').value = '';
+        })
+        .catch(error => showError('Error fetching bands: ' + error.message));
+}
 
         function handleFindByGenre(event) {
             event.preventDefault();
