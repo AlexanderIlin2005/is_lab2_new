@@ -1550,8 +1550,7 @@
 
         function escapeJsString(str) {
     if (str === null || str === undefined) return '';
-    // Экранируем одинарные кавычки (') и обратный слэш (\),
-    // а также переводы строки, чтобы они корректно работали внутри строкового литерала JS.
+
     return str.toString()
               .replace(/\\/g, '\\\\')
               .replace(/'/g, "\\'")
@@ -1576,7 +1575,7 @@
                 if (item.status === 'FAILED') statusClass = 'error-message';
 
                 const addedCount = item.status === 'SUCCESS' ? item.addedCount : 'N/A';
-                // ✅ ИСПРАВЛЕНИЕ: Экранируем строку ошибки перед встраиванием
+
         const safeErrorDetails = escapeJsString(item.errorDetails);
 
         // Замените item.errorDetails в onclick на safeErrorDetails

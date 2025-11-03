@@ -9,8 +9,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import org.springframework.transaction.PlatformTransactionManager; // New Import
-import org.springframework.transaction.support.TransactionTemplate; // New Import
+import org.springframework.transaction.PlatformTransactionManager; 
+import org.springframework.transaction.support.TransactionTemplate; 
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,14 +22,14 @@ public class ImportHistoryService {
     private final ImportHistoryRepository historyRepository;
     private final ImportHistoryMapper historyMapper;
 
-    private final TransactionTemplate transactionTemplate; // ✅ Добавлено: Управление транзакцией
+    private final TransactionTemplate transactionTemplate; 
 
     public ImportHistoryService(ImportHistoryRepository historyRepository, ImportHistoryMapper historyMapper,
                                 PlatformTransactionManager transactionManager) {
         this.historyRepository = historyRepository;
         this.historyMapper = historyMapper;
 
-        // ✅ Инициализация TransactionTemplate для выполнения в новой транзакции
+        
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
     }

@@ -344,7 +344,7 @@ public class MusicBandService {
 
         if (currentUser != null) {
             history = new ImportHistory(currentUser);
-            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Первое сохранение
+            
             history = importHistoryService.saveHistoryInNewTransaction(history);
         }
 
@@ -362,7 +362,7 @@ public class MusicBandService {
                     history.setStatus(ImportStatus.SUCCESS);
                     history.setAddedCount(0);
                     history.setEndTime(ZonedDateTime.now());
-                    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Обновление при успехе
+                    
                     importHistoryService.saveHistoryInNewTransaction(history);
                 }
                 return new ImportResultDto(0, "XML-файл не содержит групп для импорта.", true);
@@ -388,7 +388,7 @@ public class MusicBandService {
                 history.setStatus(ImportStatus.SUCCESS);
                 history.setAddedCount(importedCount);
                 history.setEndTime(ZonedDateTime.now());
-                // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Обновление при успехе
+                
                 importHistoryService.saveHistoryInNewTransaction(history);
             }
 
@@ -427,7 +427,7 @@ public class MusicBandService {
             
             history.setErrorDetails(errorMsg.length() > 4096 ? errorMsg.substring(0, 4096) : errorMsg);
             history.setEndTime(ZonedDateTime.now());
-            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Сохранение ошибки гарантированно произойдет
+            
             importHistoryService.saveHistoryInNewTransaction(history);
         }
         
