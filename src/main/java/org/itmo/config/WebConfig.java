@@ -13,37 +13,37 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
 
-// ДОБАВИТЬ НОВЫЕ ИМПОРТЫ
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
-import java.util.List; // ВАЖНО: убедитесь, что List импортирован
+import java.util.List; 
 
-// ДОБАВИТЬ НОВЫЕ ИМПОРТЫ
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-// НОВЫЙ ИМПОРТ
+
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 
-// НОВЫЙ ИМПОРТ
+
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
 @Configuration
 @EnableWebMvc
-@EnableSpringDataWebSupport // <-- ДОБАВИТЬ ЭТУ АННОТАЦИЮ
+@EnableSpringDataWebSupport 
 @ComponentScan("org.itmo")
 public class WebConfig implements WebMvcConfigurer {
 
     private final ApplicationContext applicationContext;
 
-    private final SecurityConfig securityConfig; // <-- КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Добавить поле
+    private final SecurityConfig securityConfig; 
 
     @Autowired
     public WebConfig(ApplicationContext applicationContext, SecurityConfig securityConfig) {
         this.applicationContext = applicationContext;
-        this.securityConfig = securityConfig; // <-- Сохранить
+        this.securityConfig = securityConfig; 
     }
 
     @Bean
@@ -73,50 +73,34 @@ public class WebConfig implements WebMvcConfigurer {
         registry.viewResolver(resolver);
     }
 
-    /**
-     * !!! ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Отключаем поиск файлов по суффиксу. !!!
-     * Это гарантирует, что запросы /api/** не будут перехвачены Thymeleaf,
-     * который ошибочно ищет шаблон, а будут обрабатываться RestController'ом.
-     */
+    
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
-        // Отключаем поиск шаблонов по суффиксу (например, .xml, .json),
-        // что предотвращает конфликт с ViewResolver.
+        
+        
         configurer.setUseSuffixPatternMatch(false);
 
-        // Также полезно отключить совпадение с конечным слешем для чистоты API
+        
         configurer.setUseTrailingSlashMatch(false);
     }
 
-    /**
-     * !!! ЗАМЕНА !!! Переопределяем ВСЕ конвертеры и добавляем только наш Jackson.
-     * Это гарантирует, что Jackson получит приоритет и будет использован.
-     */
+    
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        // Создаем ObjectMapper и регистрируем модуль для ZonedDateTime (важно!)
+        
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
 
-        // Это опционально, но полезно для корректной работы с модулями
+        
         objectMapper.findAndRegisterModules();
 
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
         converter.setObjectMapper(objectMapper);
 
-        // Очищаем и добавляем только наш конвертер, чтобы избежать конфликтов
-        converters.clear(); // <-- Важно! Очищаем список.
+        
+        converters.clear(); 
         converters.add(converter);
     }
 
-    /*
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173")
-                .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
-     */
+    
 }

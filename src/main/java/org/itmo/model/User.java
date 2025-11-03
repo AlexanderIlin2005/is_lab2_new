@@ -5,9 +5,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
-import org.springframework.security.core.GrantedAuthority; // НОВЫЙ ИМПОРТ
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // НОВЫЙ ИМПОРТ
-import org.springframework.security.core.userdetails.UserDetails; // НОВЫЙ ИМПОРТ
+import org.springframework.security.core.GrantedAuthority; 
+import org.springframework.security.core.authority.SimpleGrantedAuthority; 
+import org.springframework.security.core.userdetails.UserDetails; 
 
 import java.util.Collection;
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-// Реализуем UserDetails
+
 public class User implements UserDetails {
 
     @Id
@@ -30,29 +30,29 @@ public class User implements UserDetails {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    // @Enumerated(EnumType.STRING) // <-- УДАЛИТЬ ЭТУ СТРОКУ
+    
     @Column(nullable = false, columnDefinition = "user_role")
     private UserRole role;
 
-    // --- Методы UserDetails ---
+    
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Роли в Spring Security должны иметь префикс "ROLE_"
+        
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
     public String getPassword() {
-        return passwordHash; // Возвращаем хэш
+        return passwordHash; 
     }
 
-    // В Spring Security username - это уникальный идентификатор
+    
     @Override
     public String getUsername() {
         return username;
     }
 
-    // Для простоты включаем все по умолчанию
+    
     @Override
     public boolean isAccountNonExpired() { return true; }
 
@@ -64,5 +64,5 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
-    // -------------------------
+    
 }

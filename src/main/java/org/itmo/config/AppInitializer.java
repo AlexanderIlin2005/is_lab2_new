@@ -6,7 +6,7 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
     @Override
     protected Class<?>[] getRootConfigClasses() {
-        // Явно перечисляем все корневые конфигурации. Это самый надежный способ.
+        
         return new Class[]{AppConfig.class, SecurityConfig.class, PasswordEncoderConfig.class};
     }
 
@@ -17,9 +17,9 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
     @Override
     protected String[] getServletMappings() {
-        // Диспетчер будет обрабатывать все URL
+        
         return new String[]{"/"};
     }
 
-    // Метод onStartup удален
+    
 }

@@ -7,7 +7,7 @@ import jakarta.xml.bind.annotation.XmlAccessType;
 
 @Data
 @NoArgsConstructor
-@XmlAccessorType(XmlAccessType.FIELD) // Обязательно для вложенных DTO
+@XmlAccessorType(XmlAccessType.FIELD) 
 public class CoordinatesCreateDto {
     private Long id;
     private Float x;

@@ -24,28 +24,22 @@ public class ImportHistoryService {
         this.historyMapper = historyMapper;
     }
 
-    /**
-     * Возвращает историю импорта.
-     * ADMIN видит всю историю, обычный USER - только свою.
-     * @param currentUser Объект User, полученный из контекста безопасности.
-     * @param isAdmin Флаг, указывающий, является ли пользователь ADMIN.
-     * @return Список ImportHistoryResponseDto.
-     */
+    
     public List<ImportHistoryResponseDto> getImportHistory(User currentUser, boolean isAdmin) {
         Sort sort = Sort.by(Sort.Direction.DESC, "startTime");
 
         if (isAdmin) {
-            // ADMIN видит всю историю
+            
             return historyRepository.findAll(sort).stream()
-                    .map(historyMapper::toResponseDto) // <-- ИСПРАВЛЕНО
+                    .map(historyMapper::toResponseDto) 
                     .collect(Collectors.toList());
         } else {
-            // Обычный пользователь видит только свою историю
+            
             if (currentUser == null) {
                 return List.of();
             }
             return historyRepository.findByLaunchedBy(currentUser, sort).stream()
-                    .map(historyMapper::toResponseDto) // <-- ИСПРАВЛЕНО
+                    .map(historyMapper::toResponseDto) 
                     .collect(Collectors.toList());
         }
     }

@@ -1,5 +1,5 @@
 
-package org.itmo.util; // Пример пакета
+package org.itmo.util; 
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

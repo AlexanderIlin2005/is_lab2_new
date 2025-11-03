@@ -13,7 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StudioService {
     private final StudioRepository studioRepository;
-    private final SimpMessagingTemplate messagingTemplate; // <-- Новое поле
+    private final SimpMessagingTemplate messagingTemplate; 
 
     private void notifyClients(String type) {
 

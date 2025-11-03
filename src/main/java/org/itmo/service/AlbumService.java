@@ -2,7 +2,7 @@ package org.itmo.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.messaging.simp.SimpMessagingTemplate; // Для Real-Time
+import org.springframework.messaging.simp.SimpMessagingTemplate; 
 
 import jakarta.persistence.EntityNotFoundException;
 import org.itmo.model.Album;

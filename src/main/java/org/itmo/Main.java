@@ -1,7 +1,7 @@
 package org.itmo;
 
-// ВАЖНЫЕ ИМПОРТЫ
-import org.eclipse.jetty.webapp.WebAppContext; // <-- НОВЫЙ ИМПОРТ
+
+import org.eclipse.jetty.webapp.WebAppContext; 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.springframework.web.servlet.DispatcherServlet;
@@ -12,15 +12,15 @@ import org.eclipse.jetty.websocket.jakarta.server.config.JakartaWebSocketServlet
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.URL; // <-- НОВЫЙ ИМПОРТ
+import java.net.URL; 
 
-// ******************************************************
-// !!! НОВЫЕ ИМПОРТЫ ДЛЯ РУЧНОЙ РЕГИСТРАЦИИ ФИЛЬТРА !!!
+
+
 import org.eclipse.jetty.servlet.FilterHolder;
-import org.springframework.web.filter.DelegatingFilterProxy; // Класс-Прокси для поиска бина Spring
+import org.springframework.web.filter.DelegatingFilterProxy; 
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
-// ******************************************************
+
 
 public class Main {
     private static final int START_PORT = 8080;
@@ -36,65 +36,65 @@ public class Main {
 
         Server server = new Server(port);
 
-        // **********************************************
-        // !!! КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: ИСПОЛЬЗУЕМ WebAppContext !!!
-        // **********************************************
+        
+        
+        
         WebAppContext context = new WebAppContext();
         context.setContextPath("/");
 
-        // Указываем, что ресурсная база — это наш JAR-файл
+        
         URL resourceUrl = Main.class.getClassLoader().getResource("/");
         if (resourceUrl != null) {
             context.setResourceBase(resourceUrl.toURI().toString());
         } else {
-            // Fallback, если запускается не из JAR
+            
             context.setResourceBase("./src/main/webapp");
         }
 
-        // CRITICAL: Указываем, что нужно сканировать аннотации и инициализаторы
+        
         context.setParentLoaderPriority(true);
 
-        // !!! КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: ОТКЛЮЧАЕМ СТАНДАРТНЫЙ WEB.XML !!!
-        // Это предотвратит автоматическую загрузку IntrospectorCleaner, которого нет
+        
+        
         context.setDefaultsDescriptor(null);
 
-        // ИСПОЛЬЗУЕМ ТОЛЬКО МИНИМАЛЬНЫЕ КОНФИГУРАТОРЫ
+        
         context.setConfigurationClasses(new String[]{
-                // Нужен для поиска ServletContainerInitializer (AppInitializer)
+                
                 "org.eclipse.jetty.annotations.AnnotationConfiguration",
-                // Этого достаточно, если нет web.xml
+                
         });
 
-        // *******************************************************************
-        // !!! КРИТИЧЕСКИЙ ФИКС: РУЧНАЯ РЕГИСТРАЦИЯ SPRING SECURITY FILTER !!!
-        // *******************************************************************
-        // 1. Создаем делегирующий прокси-фильтр
+        
+        
+        
+        
         FilterHolder springSecurityFilter = new FilterHolder(DelegatingFilterProxy.class);
-        // 2. Указываем, какой бин Spring должен найти этот прокси (это стандартное имя)
+        
         springSecurityFilter.setInitParameter("targetBeanName", "springSecurityFilterChain");
 
-        // 3. Добавляем фильтр в WebAppContext перед DispatcherServlet
+        
         context.addFilter(springSecurityFilter, "/*", EnumSet.of(DispatcherType.REQUEST));
-        // *******************************************************************
+        
 
-        // 1. РЕШЕНИЕ ПРОБЛЕМЫ WEBSOCKET (JSR-356) - теперь WebAppContext сам справится
-        // JakartaWebSocketServletContainerInitializer.configure(context, ...);
-        // Если вы оставляете это, убедитесь, что context.setAttribute() не перекрывает WebAppContext
+        
+        
+        
 
         server.setHandler(context);
 
-        // Spring Web Context (WebConfig)
+        
         AnnotationConfigWebApplicationContext webCtx = new AnnotationConfigWebApplicationContext();
         webCtx.register(org.itmo.config.WebConfig.class);
 
         DispatcherServlet dispatcherServlet = new DispatcherServlet(webCtx);
         ServletHolder springServletHolder = new ServletHolder(dispatcherServlet);
 
-        // 2. РЕШЕНИЕ ПРОБЛЕМЫ MULTIPART (ЗАГРУЗКА ФАЙЛОВ)
+        
         MultipartConfigElement multipartConfig = new MultipartConfigElement((String) null);
         springServletHolder.getRegistration().setMultipartConfig(multipartConfig);
 
-        // ДОБАВЛЯЕМ DispatcherServlet в WebAppContext
+        
         context.addServlet(springServletHolder, "/*");
 
         server.start();

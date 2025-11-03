@@ -7,14 +7,14 @@ import org.itmo.dto.ImportResultDto;
 import org.itmo.model.MusicGenre;
 import org.itmo.service.MusicBandService;
 import org.springframework.data.domain.Page;
-//import org.springframework.data.domain.PageRequest;
+
 import org.springframework.data.domain.Pageable;
-//import org.springframework.data.domain.Sort;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-// Добавьте необходимые импорты:
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,11 +26,11 @@ import java.util.Map;
 import java.util.List;
 import java.util.Map;
 
-// НОВЫЕ ИМПОРТЫ
+
 import jakarta.validation.ValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import java.net.URI; // НОВЫЙ ИМПОРТ
+import java.net.URI; 
 
 @RestController
 @RequestMapping("/api/music-bands")
@@ -41,23 +41,7 @@ public class MusicBandController {
         this.musicBandService = musicBandService;
     }
 
-    /*
-    @GetMapping
-    public Page<MusicBandResponseDto> list(@RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "10") int size,
-                                           @RequestParam(required = false) String sort,
-                                           @RequestParam(required = false) String order,
-                                           @RequestParam(required = false) String nameEquals) {
-        Sort sortSpec = Sort.unsorted();
-        if (sort != null && !sort.isEmpty()) {
-            Sort.Direction dir = (order != null && order.equalsIgnoreCase("desc")) ? Sort.Direction.DESC : Sort.Direction.ASC;
-            sortSpec = Sort.by(dir, sort);
-        }
-        Pageable pageable = PageRequest.of(page, size, sortSpec);
-        return musicBandService.list(nameEquals, pageable);
-    }
-
-     */
+    
 
     @GetMapping
     public Page<MusicBandResponseDto> list(Pageable pageable,
@@ -70,18 +54,18 @@ public class MusicBandController {
         return musicBandService.get(id);
     }
 
-    //@PostMapping
-    //@ResponseStatus(HttpStatus.CREATED)
-    //public MusicBandResponseDto create(@Valid @RequestBody MusicBandCreateDto musicBand) {
-    //    return musicBandService.create(musicBand);
-    //}
+    
+    
+    
+    
+    
 
     @PostMapping
-// УДАЛИТЬ: @ResponseStatus(HttpStatus.CREATED)
+
     public ResponseEntity<MusicBandResponseDto> create(@Valid @RequestBody MusicBandCreateDto musicBand) {
         MusicBandResponseDto createdBand = musicBandService.create(musicBand);
 
-        // ИЗМЕНЕНИЕ: Возвращаем ResponseEntity с заголовком Location
+        
         return ResponseEntity.created(
                 URI.create("/api/music-bands/" + createdBand.getId())
         ).body(createdBand);
@@ -137,40 +121,36 @@ public class MusicBandController {
         }
 
         try {
-            // ИЗМЕНЕНИЕ: Теперь получаем объект ImportResultDto вместо int
+            
             ImportResultDto resultDto = musicBandService.importBandsFromXml(file.getInputStream());
 
-            // Используем поля DTO для формирования ответа
+            
             return ResponseEntity.ok(Map.of(
                     "imported", resultDto.getImported(),
                     "message", resultDto.getMessage(),
                     "success", resultDto.isSuccess()
             ));
         } catch (RuntimeException e) {
-            // Ошибка парсинга или бизнес-логики.
-            // Сообщение об ошибке уже должно быть отформатировано в MusicBandService.
+            
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("imported", 0, "error", e.getMessage()));
         } catch (IOException e) {
-            // Ошибка чтения файла
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("imported", 0, "error", "Не удалось прочитать файл: " + e.getMessage()));
         }
     }
 
-    // --- НОВЫЙ МЕТОД: ОБРАБОТЧИК ОШИБОК УНИКАЛЬНОСТИ ---
-    /**
-     * Обработчик для бизнес-ошибок валидации (Нарушение уникальности),
-     * возникающих при CREATE/UPDATE.
-     * Возвращает HTTP 409 Conflict (JSON).
-     */
+    
+    
     @ExceptionHandler(ValidationException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, Object> handleValidationException(ValidationException ex) {
         return Map.of(
                 "status", HttpStatus.CONFLICT.value(),
                 "error", "Conflict",
-                "message", ex.getMessage() // Чистое сообщение об ошибке
+                "message", ex.getMessage() 
         );
     }
 }

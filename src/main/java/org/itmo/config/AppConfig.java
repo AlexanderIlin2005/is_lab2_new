@@ -25,9 +25,9 @@ public class AppConfig {
         em.setPersistenceUnitName("my-persistence-unit");
         em.setJpaVendorAdapter(new EclipseLinkJpaVendorAdapter());
 
-        // 💡 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
-        // Принудительно указываем EclipseLink сканировать весь пакет org.itmo
-        // для поиска ВСЕХ сущностей (@Entity) и конвертеров (@Convert).
+        
+        
+        
         em.setPackagesToScan("org.itmo");
 
         return em;

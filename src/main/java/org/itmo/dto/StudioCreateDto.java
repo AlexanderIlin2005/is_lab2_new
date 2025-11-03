@@ -8,7 +8,7 @@ import jakarta.xml.bind.annotation.XmlAccessType;
 
 @Data
 @NoArgsConstructor
-@XmlAccessorType(XmlAccessType.FIELD) // Обязательно для вложенных DTO
+@XmlAccessorType(XmlAccessType.FIELD) 
 public class StudioCreateDto {
     private Long id;
     private String name;

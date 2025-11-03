@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import org.springframework.security.core.context.SecurityContextHolder; // НОВЫЙ ИМПОРТ
+import org.springframework.security.core.context.SecurityContextHolder; 
 
 import org.itmo.dto.MusicBandCreateDto;
 import java.io.InputStream;
@@ -28,11 +28,11 @@ import jakarta.xml.bind.JAXBException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.time.ZonedDateTime; // НОВЫЙ ИМПОРТ
+import java.time.ZonedDateTime; 
 
 import jakarta.validation.ValidationException;
 
-// НОВЫЕ ИМПОРТЫ ДЛЯ ЛОГИРОВАНИЯ ИСТОРИИ
+
 import org.itmo.model.enums.ImportStatus;
 import org.itmo.repository.ImportHistoryRepository;
 import org.itmo.repository.UserRepository;
@@ -46,12 +46,12 @@ public class MusicBandService {
     private final AlbumRepository albumRepository;
     private final CoordinatesRepository coordinatesRepository;
     private final StudioRepository studioRepository;
-    //private final MusicBandEventsPublisher eventsPublisher;
+    
     private final MusicBandMapper musicBandMapper;
     private final SimpMessagingTemplate messagingTemplate;
-    // НОВЫЕ ПОЛЯ
+    
     private final ImportHistoryRepository historyRepository;
-    private final UserRepository userRepository; // Нужно для загрузки пользователя в случае отсутствия Security
+    private final UserRepository userRepository; 
 
     public MusicBandService(MusicBandRepository musicBandRepository,
                             AlbumRepository albumRepository,
@@ -59,18 +59,18 @@ public class MusicBandService {
                             StudioRepository studioRepository,
                             MusicBandMapper musicBandMapper,
                             SimpMessagingTemplate messagingTemplate,
-                            // НОВЫЕ АРГУМЕНТЫ КОНСТРУКТОРА
+                            
                             ImportHistoryRepository historyRepository,
                             UserRepository userRepository) {
         this.musicBandRepository = musicBandRepository;
         this.albumRepository = albumRepository;
         this.coordinatesRepository = coordinatesRepository;
         this.studioRepository = studioRepository;
-        //this.eventsPublisher = eventsPublisher;
+        
         this.musicBandMapper = musicBandMapper;
         this.messagingTemplate = messagingTemplate;
 
-        // ИНИЦИАЛИЗАЦИЯ НОВЫХ ПОЛЕЙ
+        
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
     }
@@ -96,9 +96,9 @@ public class MusicBandService {
     }
 
     public MusicBandResponseDto create(@Valid MusicBandCreateDto dto) {
-        // --- ИЗМЕНЕНИЕ ---
-        checkUniqueness(dto, null); // Создание: ID для исключения = null
-        // -----------------
+        
+        checkUniqueness(dto, null); 
+        
         MusicBand musicBand = musicBandMapper.toEntity(dto);
 
 
@@ -136,34 +136,34 @@ public class MusicBandService {
         }
 
 
-        // 1. Сохраняем сущность (она все еще, вероятно, имеет id=null)
+        
         musicBand = musicBandRepository.save(musicBand);
 
-        // 2. АГРЕССИВНАЯ ПРОВЕРКА / ПОЛУЧЕНИЕ ID ИЗ БД
+        
         Long realBandId = musicBand.getId();
 
-        // Если ID по-прежнему NULL (что является багом, который мы обходим)
+        
         if (realBandId == null) {
-            // Выполняем SQL-запрос через репозиторий, чтобы получить ID
+            
             MusicBand persistedBand = musicBandRepository
                     .findByNameAndGenre(musicBand.getName(), musicBand.getGenre())
                     .orElseThrow(() -> new IllegalStateException("Группа была сохранена, но не найдена по Name/Genre. Критическая ошибка транзакции."));
 
-            // Получаем ID из БД
+            
             realBandId = persistedBand.getId();
 
-            // 3. Обновляем объект в памяти, чтобы он соответствовал БД
+            
             musicBand = persistedBand;
         }
-        // К этому моменту realBandId ГАРАНТИРОВАННО содержит числовой ID.
+        
 
-        // 4. КОНСТРУИРОВАНИЕ DTO С ГАРАНТИРОВАННЫМ ID
+        
         MusicBandResponseDto responseDto = musicBandMapper.toResponseDto(musicBand);
 
-        // Убедимся, что ID скопирован, используя гарантированный realBandId
+        
         responseDto.setId(realBandId);
 
-        // Вложенные координаты, если их ID тоже был потерян
+        
         if (musicBand.getCoordinates() != null && responseDto.getCoordinates() != null) {
             responseDto.getCoordinates().setId(musicBand.getCoordinates().getId());
         }
@@ -178,20 +178,20 @@ public class MusicBandService {
                 .orElseThrow(() -> new EntityNotFoundException("MusicBand not found: " + id));
 
 
-        // --- ИЗМЕНЕНИЕ: РУЧНОЕ СОЗДАНИЕ DTO ДЛЯ ПРОВЕРКИ УНИКАЛЬНОСТИ ---
+        
         MusicBandCreateDto futureDto = new MusicBandCreateDto();
 
-        // Копируем текущее состояние (которое может быть null, если не задано)
+        
         futureDto.setName(existing.getName());
         futureDto.setGenre(existing.getGenre());
 
-        // Применяем изменения из patch для проверки
+        
         if (patch.getName() != null) futureDto.setName(patch.getName());
         if (patch.getGenre() != null) futureDto.setGenre(patch.getGenre());
 
-        // ПРОВЕРКА УНИКАЛЬНОСТИ (с исключением текущего ID)
+        
         checkUniqueness(futureDto, id);
-        // -----------------------------------------------------------------
+        
 
 
         if (patch.getName() != null) existing.setName(patch.getName());
@@ -260,7 +260,7 @@ public class MusicBandService {
         notifyClients("BAND_UPDATED");
     }
 
-    // Специальные операции
+    
     public boolean deleteOneByStudioName(String studioName) {
         Optional<MusicBand> musicBand = musicBandRepository.findFirstByStudioName(studioName);
         if (musicBand.isPresent()) {
@@ -300,7 +300,7 @@ public class MusicBandService {
         return musicBand.getNumberOfParticipants();
     }
 
-    // ВАШ МЕТОД validateDtoForImport (без изменений)
+    
     private void validateDtoForImport(MusicBandCreateDto dto, int index) {
         String prefix = "Группа #" + (index + 1) + " (" + (dto.getName() != null ? dto.getName() : "N/A") + "): ";
 
@@ -331,25 +331,23 @@ public class MusicBandService {
     }
 
 
-    /**
-     * ИЗМЕНЕННЫЙ МЕТОД ИМПОРТА С ЛОГИРОВАНИЕМ ИСТОРИИ
-     */
+    
     @Transactional
     public ImportResultDto importBandsFromXml(InputStream xmlData) {
 
-        // --- 1. Определение текущего пользователя ---
+        
         User currentUser = getCurrentAuthenticatedUser();
         ImportHistory history = null;
 
         if (currentUser != null) {
             history = new ImportHistory(currentUser);
-            history = historyRepository.save(history); // Сохраняем PENDING
+            history = historyRepository.save(history); 
         }
 
         int importedCount = 0;
 
         try {
-            // 2. Парсинг XML
+            
             JAXBContext jaxbContext = JAXBContext.newInstance(MusicBandListWrapper.class, MusicBandCreateDto.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
             MusicBandListWrapper wrapper = (MusicBandListWrapper) unmarshaller.unmarshal(xmlData);
@@ -365,22 +363,22 @@ public class MusicBandService {
                 return new ImportResultDto(0, "XML-файл не содержит групп для импорта.", true);
             }
 
-            // 3. ВАЛИДАЦИЯ и ПРОВЕРКА УНИКАЛЬНОСТИ
+            
             for (int i = 0; i < dtos.size(); i++) {
                 MusicBandCreateDto dto = dtos.get(i);
                 validateDtoForImport(dto, i);
                 checkUniqueness(dto, null);
             }
 
-            // 4. СОЗДАНИЕ
+            
             for (MusicBandCreateDto dto : dtos) {
-                this.create(dto); // Используем существующий метод create
+                this.create(dto); 
                 importedCount++;
             }
 
             notifyClients("BAND_BULK_IMPORTED");
 
-            // --- 5. ЛОГИРОВАНИЕ УСПЕХА (SUCCESS) ---
+            
             if (history != null) {
                 history.setStatus(ImportStatus.SUCCESS);
                 history.setAddedCount(importedCount);
@@ -402,38 +400,34 @@ public class MusicBandService {
         }
     }
 
-    /**
-     * Вспомогательный метод для получения текущего пользователя из контекста безопасности.
-     */
+    
     private User getCurrentAuthenticatedUser() {
-        // Если Spring Security настроен и объект User имплементирует UserDetails
+        
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof User) {
             return (User) principal;
         }
 
-        // ВАЖНО: Если аутентификация не настроена, возвращаем null.
-        // В реальном приложении здесь должна быть ошибка аутентификации.
+        
+        
         return null;
     }
 
-    /**
-     * Вспомогательный метод для логирования ошибки.
-     */
+    
     private void handleImportError(ImportHistory history, String message, Exception e) {
         if (history != null) {
             history.setStatus(ImportStatus.FAILED);
             String errorMsg = e.getMessage() != null ? e.getMessage() : message;
-            // Ограничиваем сообщение
+            
             history.setErrorDetails(errorMsg.length() > 4096 ? errorMsg.substring(0, 4096) : errorMsg);
             history.setEndTime(ZonedDateTime.now());
             historyRepository.save(history);
         }
-        // Логирование в консоль для дебага
+        
         System.err.println(message + " Details: " + e.toString());
     }
 
-    // ВАШ МЕТОД checkUniqueness (без изменений)
+    
     private void checkUniqueness(MusicBandCreateDto dto, Long bandIdToExclude) {
         if (dto.getName() == null || dto.getGenre() == null) {
             return;

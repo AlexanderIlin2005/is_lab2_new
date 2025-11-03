@@ -60,8 +60,8 @@ public class MusicBand {
     @JoinColumn(name = "studio_id")
     private Studio studio;
 
-    @Version // <--- КРИТИЧЕСКАЯ АННОТАЦИЯ
-    private Long version; // <--- Поле для хранения номера версии
+    @Version 
+    private Long version; 
 
     @PrePersist
     protected void onCreate() {
