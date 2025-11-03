@@ -6,7 +6,7 @@ import lombok.Value;
 
 @Value
 public class UserDto {
-    private Long id; // <-- ЭТО ПОЛЕ ДОЛЖНО БЫТЬ ОБЯЗАТЕЛЬНО
+    private Long id;
     String username;
     UserRole role;
 

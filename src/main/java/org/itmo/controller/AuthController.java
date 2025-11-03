@@ -27,10 +27,10 @@ public class AuthController {
     public ResponseEntity<UserDto> register(@Valid @RequestBody RegistrationRequestDto registrationDto) {
         try {
             UserDto createdUser = userMapper.toUserDto(userService.registerNewUser(registrationDto));
-            // 201 Created
+            
             return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
         } catch (ResponseStatusException e) {
-            // Обработка 409 Conflict из сервиса
+            
             return ResponseEntity.status(e.getStatusCode()).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

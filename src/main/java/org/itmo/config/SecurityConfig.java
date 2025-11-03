@@ -105,14 +105,14 @@ public class SecurityConfig {
                                 new AntPathRequestMatcher("/ws/**")
                         ).permitAll()
 
-                        // 1. Регистрация: разрешена всем
+                        
                         .requestMatchers(new AntPathRequestMatcher("/api/auth/register", HttpMethod.POST.name())).permitAll()
 
-                        // 2. ✅ ИСПРАВЛЕНИЕ: Разрешаем /api/users/me всем аутентифицированным пользователям.
-                        //    Это должно быть ДО общего правила /api/users/**.
+                        
+                        
                         .requestMatchers(new AntPathRequestMatcher("/api/users/me")).authenticated()
 
-                        // 3. Управление пользователями: только для ADMIN
+                        
                         .requestMatchers(new AntPathRequestMatcher("/api/users/**")).hasAuthority("ROLE_ADMIN")
 
 
