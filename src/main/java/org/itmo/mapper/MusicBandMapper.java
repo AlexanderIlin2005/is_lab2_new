@@ -7,8 +7,14 @@ import org.mapstruct.*;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface MusicBandMapper {
 
+    // Корневая сущность
+    @Mapping(source = "id", target = "id")
     MusicBandResponseDto toResponseDto(MusicBand musicBand);
+
+    // Вложенная сущность (Coordinates)
+    @Mapping(source = "id", target = "id")
     CoordinatesResponseDto toResponseDto(Coordinates coordinates);
+
     AlbumResponseDto toResponseDto(Album album);
     StudioResponseDto toResponseDto(Studio studio);
 

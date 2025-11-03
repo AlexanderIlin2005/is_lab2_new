@@ -21,6 +21,8 @@ public interface MusicBandRepository extends JpaRepository<MusicBand, Long> {
 
     Optional<MusicBand> findFirstByStudioName(String studioName);
 
+    Optional<MusicBand> findByNameAndGenre(String name, MusicGenre genre);
+
     @Query("SELECT AVG(m.albumCount) FROM MusicBand m")
     Double findAverageAlbumCount();
 
@@ -30,4 +32,6 @@ public interface MusicBandRepository extends JpaRepository<MusicBand, Long> {
 
     @Query("SELECT m FROM MusicBand m WHERE m.genre = :genre")
     List<MusicBand> findByGenre(@Param("genre") MusicGenre genre);
+
+
 }

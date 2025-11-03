@@ -30,6 +30,8 @@ import java.util.Map;
 import jakarta.validation.ValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.net.URI; // НОВЫЙ ИМПОРТ
+
 @RestController
 @RequestMapping("/api/music-bands")
 public class MusicBandController {
@@ -68,10 +70,21 @@ public class MusicBandController {
         return musicBandService.get(id);
     }
 
+    //@PostMapping
+    //@ResponseStatus(HttpStatus.CREATED)
+    //public MusicBandResponseDto create(@Valid @RequestBody MusicBandCreateDto musicBand) {
+    //    return musicBandService.create(musicBand);
+    //}
+
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public MusicBandResponseDto create(@Valid @RequestBody MusicBandCreateDto musicBand) {
-        return musicBandService.create(musicBand);
+// УДАЛИТЬ: @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<MusicBandResponseDto> create(@Valid @RequestBody MusicBandCreateDto musicBand) {
+        MusicBandResponseDto createdBand = musicBandService.create(musicBand);
+
+        // ИЗМЕНЕНИЕ: Возвращаем ResponseEntity с заголовком Location
+        return ResponseEntity.created(
+                URI.create("/api/music-bands/" + createdBand.getId())
+        ).body(createdBand);
     }
 
     @PatchMapping("/{id}")

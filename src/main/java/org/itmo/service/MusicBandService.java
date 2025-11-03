@@ -136,9 +136,40 @@ public class MusicBandService {
         }
 
 
+        // 1. Сохраняем сущность (она все еще, вероятно, имеет id=null)
         musicBand = musicBandRepository.save(musicBand);
-        notifyClients("BAND_UPDATED"); // <-- Добавить вызов
-        return musicBandMapper.toResponseDto(musicBand);
+
+        // 2. АГРЕССИВНАЯ ПРОВЕРКА / ПОЛУЧЕНИЕ ID ИЗ БД
+        Long realBandId = musicBand.getId();
+
+        // Если ID по-прежнему NULL (что является багом, который мы обходим)
+        if (realBandId == null) {
+            // Выполняем SQL-запрос через репозиторий, чтобы получить ID
+            MusicBand persistedBand = musicBandRepository
+                    .findByNameAndGenre(musicBand.getName(), musicBand.getGenre())
+                    .orElseThrow(() -> new IllegalStateException("Группа была сохранена, но не найдена по Name/Genre. Критическая ошибка транзакции."));
+
+            // Получаем ID из БД
+            realBandId = persistedBand.getId();
+
+            // 3. Обновляем объект в памяти, чтобы он соответствовал БД
+            musicBand = persistedBand;
+        }
+        // К этому моменту realBandId ГАРАНТИРОВАННО содержит числовой ID.
+
+        // 4. КОНСТРУИРОВАНИЕ DTO С ГАРАНТИРОВАННЫМ ID
+        MusicBandResponseDto responseDto = musicBandMapper.toResponseDto(musicBand);
+
+        // Убедимся, что ID скопирован, используя гарантированный realBandId
+        responseDto.setId(realBandId);
+
+        // Вложенные координаты, если их ID тоже был потерян
+        if (musicBand.getCoordinates() != null && responseDto.getCoordinates() != null) {
+            responseDto.getCoordinates().setId(musicBand.getCoordinates().getId());
+        }
+
+        notifyClients("BAND_UPDATED");
+        return responseDto;
     }
 
     public MusicBandResponseDto update(@NotNull Long id, @Valid MusicBandCreateDto patch) {
