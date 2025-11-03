@@ -701,7 +701,7 @@
                     document.getElementById('description').value = band.description || '';
                     document.getElementById('albumCount').value = band.albumCount;
 
-                    const date = new Date(band.establishmentDate);
+                    const date = new Date(band.establishmentDate * 1000);
                     const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                     document.getElementById('establishmentDate').value = localDate;
 
