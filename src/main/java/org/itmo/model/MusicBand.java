@@ -60,6 +60,9 @@ public class MusicBand {
     @JoinColumn(name = "studio_id")
     private Studio studio;
 
+    @Version // <--- КРИТИЧЕСКАЯ АННОТАЦИЯ
+    private Long version; // <--- Поле для хранения номера версии
+
     @PrePersist
     protected void onCreate() {
         this.creationDate = ZonedDateTime.now();

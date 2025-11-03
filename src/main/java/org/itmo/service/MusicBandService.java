@@ -172,6 +172,7 @@ public class MusicBandService {
         return responseDto;
     }
 
+    @Transactional
     public MusicBandResponseDto update(@NotNull Long id, @Valid MusicBandCreateDto patch) {
         MusicBand existing = musicBandRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MusicBand not found: " + id));
@@ -250,6 +251,7 @@ public class MusicBandService {
         return musicBandMapper.toResponseDto(existing);
     }
 
+    @Transactional
     public void delete(@NotNull Long id) {
         MusicBand musicBand = musicBandRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MusicBand not found: " + id));
