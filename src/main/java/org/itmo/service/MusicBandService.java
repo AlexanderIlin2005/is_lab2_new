@@ -36,6 +36,7 @@ import jakarta.validation.ValidationException;
 import org.itmo.model.enums.ImportStatus;
 import org.itmo.repository.ImportHistoryRepository;
 import org.itmo.repository.UserRepository;
+import org.itmo.service.ImportHistoryService;
 
 
 
@@ -51,7 +52,8 @@ public class MusicBandService {
     private final SimpMessagingTemplate messagingTemplate;
     
     private final ImportHistoryRepository historyRepository;
-    private final UserRepository userRepository; 
+    private final UserRepository userRepository;
+    private final ImportHistoryService importHistoryService;
 
     public MusicBandService(MusicBandRepository musicBandRepository,
                             AlbumRepository albumRepository,
@@ -59,9 +61,9 @@ public class MusicBandService {
                             StudioRepository studioRepository,
                             MusicBandMapper musicBandMapper,
                             SimpMessagingTemplate messagingTemplate,
-                            
+
                             ImportHistoryRepository historyRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository, ImportHistoryService importHistoryService) {
         this.musicBandRepository = musicBandRepository;
         this.albumRepository = albumRepository;
         this.coordinatesRepository = coordinatesRepository;
@@ -73,6 +75,7 @@ public class MusicBandService {
         
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
+        this.importHistoryService = importHistoryService;
     }
 
 
@@ -341,7 +344,8 @@ public class MusicBandService {
 
         if (currentUser != null) {
             history = new ImportHistory(currentUser);
-            history = historyRepository.save(history); 
+            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Первое сохранение
+            history = importHistoryService.saveHistoryInNewTransaction(history);
         }
 
         int importedCount = 0;
@@ -358,7 +362,8 @@ public class MusicBandService {
                     history.setStatus(ImportStatus.SUCCESS);
                     history.setAddedCount(0);
                     history.setEndTime(ZonedDateTime.now());
-                    historyRepository.save(history);
+                    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Обновление при успехе
+                    importHistoryService.saveHistoryInNewTransaction(history);
                 }
                 return new ImportResultDto(0, "XML-файл не содержит групп для импорта.", true);
             }
@@ -383,7 +388,8 @@ public class MusicBandService {
                 history.setStatus(ImportStatus.SUCCESS);
                 history.setAddedCount(importedCount);
                 history.setEndTime(ZonedDateTime.now());
-                historyRepository.save(history);
+                // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Обновление при успехе
+                importHistoryService.saveHistoryInNewTransaction(history);
             }
 
             return new ImportResultDto(importedCount, "Импорт завершен успешно.", true);
@@ -421,7 +427,8 @@ public class MusicBandService {
             
             history.setErrorDetails(errorMsg.length() > 4096 ? errorMsg.substring(0, 4096) : errorMsg);
             history.setEndTime(ZonedDateTime.now());
-            historyRepository.save(history);
+            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ МЕТОД: Сохранение ошибки гарантированно произойдет
+            importHistoryService.saveHistoryInNewTransaction(history);
         }
         
         System.err.println(message + " Details: " + e.toString());

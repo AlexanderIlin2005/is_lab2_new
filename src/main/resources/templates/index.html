@@ -1517,6 +1517,8 @@
                 }
             } catch (error) {
                 showError('❌ ' + error.message);
+                // ✅ ДОБАВЛЕНО: Обновляем историю после ошибки импорта
+                loadImportHistory();
             }
         }
 
@@ -1546,6 +1548,17 @@
                 });
         }
 
+        function escapeJsString(str) {
+    if (str === null || str === undefined) return '';
+    // Экранируем одинарные кавычки (') и обратный слэш (\),
+    // а также переводы строки, чтобы они корректно работали внутри строкового литерала JS.
+    return str.toString()
+              .replace(/\\/g, '\\\\')
+              .replace(/'/g, "\\'")
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '');
+}
+
         function renderHistoryTable(data) {
             const tableBody = document.querySelector('#importHistoryTable tbody');
             tableBody.innerHTML = '';
@@ -1563,9 +1576,13 @@
                 if (item.status === 'FAILED') statusClass = 'error-message';
 
                 const addedCount = item.status === 'SUCCESS' ? item.addedCount : 'N/A';
-                const errorDetails = item.status === 'FAILED'
-                    ? `<a href="#" class="text-danger" onclick="event.preventDefault(); alert('Error Details:\\n${item.errorDetails}');">Details</a>`
-                    : '';
+                // ✅ ИСПРАВЛЕНИЕ: Экранируем строку ошибки перед встраиванием
+        const safeErrorDetails = escapeJsString(item.errorDetails);
+
+        // Замените item.errorDetails в onclick на safeErrorDetails
+        const errorDetails = item.status === 'FAILED'
+            ? `<a href="#" class="text-danger" onclick="event.preventDefault(); alert('Error Details:\\n${safeErrorDetails}');">Details</a>`
+            : '';
 
                 row.innerHTML = `
                     <td>${item.id}</td>
